@@ -240,7 +240,7 @@ class _UserState extends State<User> {
     return SingleChildScrollView(
       scrollDirection: Axis.vertical,
       child: Container(
-        color: AppColors.grey,
+        color: Colors.black12,
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Align(
@@ -397,7 +397,7 @@ class _UserState extends State<User> {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       color: (_selectedPerson == index) ? AppColors.lightBlue : AppColors.darkBlue,
-      elevation: 5,
+      elevation: 1,
       child: const Padding(
         padding: EdgeInsets.all(8.0),
         child: SizedBox(

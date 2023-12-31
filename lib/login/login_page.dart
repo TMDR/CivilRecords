@@ -135,7 +135,7 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
                                     icon: Icon(
                                       isObscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                                      color: Colors.black,
+                                      color: Colors.white,
                                     ),
                                   ),
                                 ),
@@ -146,7 +146,7 @@ class _LoginPageState extends State<LoginPage> {
                                 child: Text(
                                   'Forgot Password?',
                                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: AppColors.primaryColor,
+                                        color: Colors.white70,
                                         fontWeight: FontWeight.bold,
                                       ),
                                 ),
@@ -199,7 +199,7 @@ class _LoginPageState extends State<LoginPage> {
                           children: [
                             Text(
                               "Don't have an account?",
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.black),
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70),
                             ),
                             TextButton(
                               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const User())),
@@ -212,7 +212,7 @@ class _LoginPageState extends State<LoginPage> {
                               child: Text(
                                 'Register',
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: AppColors.primaryColor,
+                                      color: Colors.white70,
                                       fontWeight: FontWeight.bold,
                                     ),
                               ),
