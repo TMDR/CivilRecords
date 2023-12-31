@@ -11,6 +11,8 @@ class User extends StatefulWidget {
 }
 
 class _UserState extends State<User> {
+  var _selectedPerson = -1;
+
   final GlobalKey<ExpandableBottomSheetState> exkey = GlobalKey();
   var expansionStatus = ExpansionStatus.contracted;
   TextEditingController fcontroller = TextEditingController();
@@ -39,54 +41,88 @@ class _UserState extends State<User> {
     }
   }
 
+  Widget details(bool big) {
+    if (_selectedPerson == -1) {
+      return const Center(
+        child: Text('No Person selected'),
+      );
+    }
+
+    return Center(
+      child: Text("You have to implement now, lazy. $_selectedPerson"),
+    );
+  }
+
+  Widget twoPaneLayout(bool big) {
+    return Row(
+      children: [
+        firstView(context, big),
+        const VerticalDivider(width: 1, thickness: .2),
+        Expanded(
+          child: details(big),
+        ),
+      ],
+    );
+  }
+
+  Widget onePaneLayout(BuildContext context, bool big) {
+    return firstView(context, big);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-        home: Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppColors.darkBlue,
-        title: const Text('User'),
-        centerTitle: true,
-      ),
-      body: ExpandableBottomSheet(
+    final width = MediaQuery.of(context).size.width;
+
+    var big = width > 700;
+
+    var mainLayout = onePaneLayout(context, big);
+
+    // if width is greater than 700, use two column layout
+    if (big) {
+      mainLayout = twoPaneLayout(big);
+    }
+
+    if (!big && _selectedPerson != -1) {
+      mainLayout = details(big);
+    }
+
+    return Scaffold(
+      appBar: (!big && _selectedPerson != -1)
+          ? AppBar(
+              backgroundColor: AppColors.darkBlue,
+              foregroundColor: Colors.white,
+              title: const Text('Details'),
+              centerTitle: true,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () {
+                  setState(() {
+                    _selectedPerson = -1;
+                  });
+                },
+              ),
+            )
+          : AppBar(
+              backgroundColor: AppColors.darkBlue,
+              foregroundColor: Colors.white,
+              title: const Text('User'),
+              centerTitle: true,
+            ),
+      body: mainLayout,
+    );
+  }
+
+  Widget firstView(BuildContext context, bool big) {
+    return SizedBox(
+      width: big ? 350 : null,
+      child: ExpandableBottomSheet(
         key: exkey,
         persistentContentHeight: 0,
         //This is the widget which will be overlapped by the bottom sheet.
-        background: SingleChildScrollView(
-          scrollDirection: Axis.vertical,
-          child: Container(
-            color: AppColors.grey,
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: Wrap(direction: Axis.horizontal, children: [
-                  //for test purposes, every card will have an id and will be generated soon
-                  personCard(),
-                  personCard(),
-                  personCard(),
-                  personCard(),
-                  personCard(),
-                  personCard(),
-                  personCard(),
-                  personCard(),
-                  personCard(),
-                  personCard(),
-                  personCard(),
-                  personCard(),
-                  personCard(),
-                  const SizedBox(
-                    height: 200,
-                  )
-                ]),
-              ),
-            ),
-          ),
-        ),
+        background: personList(big),
         //This is the content of the bottom sheet which will be extendable by dragging
         expandableContent: Container(
-          padding:
-              EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
           color: AppColors.darkBlue,
           child: Padding(
             padding: const EdgeInsets.all(10.0),
@@ -112,15 +148,13 @@ class _UserState extends State<User> {
           decoration: BoxDecoration(
               color: AppColors.darkBlue,
               border: Border.all(color: AppColors.darkBlue),
-              borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20), topRight: Radius.circular(20))),
+              borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20))),
           child: Center(
             child: Column(
               children: [
                 IconButton(
                     onPressed: () {
-                      if (exkey.currentState!.expansionStatus ==
-                          ExpansionStatus.expanded) {
+                      if (exkey.currentState!.expansionStatus == ExpansionStatus.expanded) {
                         exkey.currentState!.contract();
                       } else {
                         exkey.currentState!.expand();
@@ -143,19 +177,13 @@ class _UserState extends State<User> {
                               color: Colors.white70,
                             ),
                             decoration: const InputDecoration(
-                              enabledBorder: OutlineInputBorder(
-                                  borderRadius:
-                                      BorderRadius.all(Radius.circular(10.0)),
-                                  borderSide:
-                                      BorderSide(color: AppColors.grey)),
-                              focusedBorder: OutlineInputBorder(
-                                  borderSide:
-                                      BorderSide(color: Colors.blueAccent)),
+                              enabledBorder:
+                                  OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10.0)), borderSide: BorderSide(color: AppColors.grey)),
+                              focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blueAccent)),
                               labelStyle: TextStyle(color: AppColors.grey),
                               fillColor: Colors.white10,
                               labelText: "First Name",
-                              floatingLabelBehavior:
-                                  FloatingLabelBehavior.always,
+                              floatingLabelBehavior: FloatingLabelBehavior.always,
                             ),
                             keyboardType: TextInputType.emailAddress,
                             textInputAction: TextInputAction.next,
@@ -172,13 +200,9 @@ class _UserState extends State<User> {
                             color: Colors.white70,
                           ),
                           decoration: const InputDecoration(
-                            enabledBorder: OutlineInputBorder(
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(10.0)),
-                                borderSide: BorderSide(color: AppColors.grey)),
-                            focusedBorder: OutlineInputBorder(
-                                borderSide:
-                                    BorderSide(color: Colors.blueAccent)),
+                            enabledBorder:
+                                OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10.0)), borderSide: BorderSide(color: AppColors.grey)),
+                            focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blueAccent)),
                             labelStyle: TextStyle(color: AppColors.grey),
                             fillColor: Colors.white10,
                             labelText: "Last Name",
@@ -209,7 +233,37 @@ class _UserState extends State<User> {
           ),
         ),
       ),
-    ));
+    );
+  }
+
+  Widget personList(bool big) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: Container(
+        color: AppColors.grey,
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: Wrap(direction: Axis.horizontal, children: [
+              //for test purposes, every card will have an id and will be generated soon
+              for (int i = 0; i < 10; i++)
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedPerson = i;
+                    });
+                  },
+                  child: personCard(i),
+                ),
+              const SizedBox(
+                height: 200,
+              )
+            ]),
+          ),
+        ),
+      ),
+    );
   }
 
   //extra filter container except place of birth
@@ -227,8 +281,7 @@ class _UserState extends State<User> {
     ]);
     return InputDecorator(
       decoration: InputDecoration(
-        labelStyle:
-            const TextStyle(color: AppColors.grey, fontWeight: FontWeight.w500),
+        labelStyle: const TextStyle(color: AppColors.grey, fontWeight: FontWeight.w500),
         labelText: title,
         enabledBorder: OutlineInputBorder(
           borderSide: const BorderSide(color: AppColors.grey),
@@ -266,8 +319,7 @@ class _UserState extends State<User> {
                 Icons.calendar_today,
                 color: AppColors.grey,
               ),
-              enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: AppColors.lightBlue))),
+              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppColors.lightBlue))),
           readOnly: true,
           onTap: () {
             selectDate(true, true);
@@ -287,8 +339,7 @@ class _UserState extends State<User> {
                 Icons.calendar_today,
                 color: AppColors.grey,
               ),
-              enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: AppColors.lightBlue))),
+              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppColors.lightBlue))),
           readOnly: true,
           onTap: () {
             selectDate(false, true);
@@ -312,8 +363,7 @@ class _UserState extends State<User> {
                 Icons.calendar_today,
                 color: AppColors.grey,
               ),
-              enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: AppColors.lightBlue))),
+              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppColors.lightBlue))),
           readOnly: true,
           onTap: () {
             selectDate(true, false);
@@ -333,8 +383,7 @@ class _UserState extends State<User> {
                 Icons.calendar_today,
                 color: AppColors.grey,
               ),
-              enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: AppColors.lightBlue))),
+              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppColors.lightBlue))),
           readOnly: true,
           onTap: () {
             selectDate(false, false);
@@ -344,14 +393,15 @@ class _UserState extends State<User> {
     ], 'Date of Death');
   }
 
-  Widget personCard() {
+  Widget personCard(int index) {
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-      color: AppColors.darkBlue,
-      child: const SizedBox(
-        width: 350,
-        child: Card(
-          color: AppColors.darkBlue,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      color: (_selectedPerson == index) ? AppColors.lightBlue : AppColors.darkBlue,
+      elevation: 5,
+      child: const Padding(
+        padding: EdgeInsets.all(8.0),
+        child: SizedBox(
+          width: 350,
           child: Row(
             children: [
               Icon(
@@ -393,11 +443,7 @@ class _UserState extends State<User> {
   }
 
   Future<void> selectDate(bool from, bool birth) async {
-    DateTime? selected = await showDatePicker(
-        context: context,
-        initialDate: DateTime.now(),
-        firstDate: DateTime(1900, 1, 1),
-        lastDate: DateTime.now());
+    DateTime? selected = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(1900, 1, 1), lastDate: DateTime.now());
     if (selected != null) {
       setState(() {
         if (birth) {
