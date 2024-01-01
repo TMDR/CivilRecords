@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'login/login_page.dart';
 import 'values/app_constants.dart';
 import 'values/app_routes.dart';
-import 'values/app_theme.dart';
 
 void main() async {
   runApp(const MyApp());

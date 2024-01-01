@@ -1,6 +1,4 @@
 import 'package:civilrecord/utils/db.dart';
-import 'package:postgres/postgres.dart';
-
 import 'components/multiselect.dart';
 import 'package:civilrecord/values/app_colors.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +14,7 @@ class User extends StatefulWidget {
 }
 
 class _UserState extends State<User> {
-  var _selectedPerson = -1;
+  Person? _selectedPerson;
   Pdb? dbconn;
   final GlobalKey<ExpandableBottomSheetState> exkey = GlobalKey();
   var expansionStatus = ExpansionStatus.contracted;
@@ -65,14 +63,46 @@ class _UserState extends State<User> {
   }
 
   Widget details(bool big) {
-    if (_selectedPerson == -1) {
+    if (_selectedPerson == null) {
       return const Center(
         child: Text('No Person selected'),
       );
     }
 
     return Center(
-      child: Text("You have to implement now, lazy. $_selectedPerson"),
+      child: Container(
+        alignment: Alignment.topLeft,
+        width: double.infinity,
+        color: Colors.black12,
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Icon(
+                  Icons.account_circle_outlined,
+                  color: AppColors.grey,
+                  size: MediaQuery.of(context).size.height * 0.2,
+                ),
+              ),
+              Text("First Name: ${_selectedPerson?.firstName}"),
+              const SizedBox(height: 4.0),
+              Text("Last Name: ${_selectedPerson?.lastName}"),
+              const SizedBox(height: 4.0),
+              Text(
+                  "Gender: ${_selectedPerson?.gender ?? true ? "Male" : "Female"}"),
+              const SizedBox(height: 4.0),
+              Text("Date Of Birth: ${_selectedPerson?.dateOfBirth}"),
+              const SizedBox(height: 4.0),
+              Text("Date of Death: ${_selectedPerson?.dateOfDeath ?? "None"}"),
+              const SizedBox(height: 4.0),
+              Text(
+                  "Occupation: ${_selectedPerson?.occupation != null ? "${_selectedPerson?.occupation?.organization} as ${_selectedPerson?.occupation?.trait}" : "None"}")
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -104,12 +134,12 @@ class _UserState extends State<User> {
       mainLayout = twoPaneLayout(big, people);
     }
 
-    if (!big && _selectedPerson != -1) {
+    if (!big && _selectedPerson != null) {
       mainLayout = details(big);
     }
 
     return Scaffold(
-      appBar: (!big && _selectedPerson != -1)
+      appBar: (!big && _selectedPerson != null)
           ? AppBar(
               backgroundColor: AppColors.darkBlue,
               foregroundColor: Colors.white,
@@ -119,7 +149,7 @@ class _UserState extends State<User> {
                 icon: const Icon(Icons.arrow_back),
                 onPressed: () {
                   setState(() {
-                    _selectedPerson = -1;
+                    _selectedPerson = null;
                   });
                 },
               ),
@@ -231,43 +261,9 @@ class _UserState extends State<User> {
     var toDateOfDeath = (_selectedItems.contains("Date of Death"))
         ? _deathDateFilter.controllers[1].text
         : "";
-    String select =
-        "SELECT id,first_name,last_name,place_of_birth,date_of_birth,gender FROM PERSON WHERE ";
-    int length = select.length;
-    select =
-        firstName == "" ? select : ("${select}first_name='$firstName' AND ");
-    select = lastName == "" ? select : ("${select}last_name='$lastName' AND ");
-    select = fromDateOfBirth == ""
-        ? select
-        : ("${select}date_of_birth>='$fromDateOfBirth' AND ");
-    select = toDateOfBirth == ""
-        ? select
-        : ("${select}date_of_birth<='$toDateOfBirth' AND ");
-    select = fromDateOfDeath == ""
-        ? select
-        : ("${select}date_of_death>='$fromDateOfDeath' AND ");
-    select = toDateOfDeath == ""
-        ? select
-        : ("${select}date_of_death<='$toDateOfBirth' AND ");
-    if (select.length > length) {
-      select = select.substring(0, select.length - 5);
-    } else {
-      select = "";
-    }
-    Result? resp = select == "" ? null : await dbconn?.execute(select);
-    List<Person> foundpeople = [];
-    var row = resp?.iterator;
-    while (row?.moveNext() ?? false) {
-      foundpeople.add(Person(
-          id: row?.current[0] as int,
-          firstName: row?.current[1] as String,
-          lastName: row?.current[2] as String,
-          placeOfBirth: row?.current[3] as String,
-          dateOfBirth: (row?.current[4] as DateTime).toString().split(" ")[0],
-          dateOfDeath: null,
-          occupation: null,
-          gender: !(row?.current[5] as bool)));
-    }
+    var foundpeople = await dbconn?.fetchPeople(firstName, lastName,
+            fromDateOfBirth, toDateOfBirth, fromDateOfDeath, toDateOfDeath) ??
+        [];
     setState(() {
       people = foundpeople;
     });
@@ -289,7 +285,7 @@ class _UserState extends State<User> {
                         GestureDetector(
                           onTap: () {
                             setState(() {
-                              _selectedPerson = person.id;
+                              _selectedPerson = person;
                             });
                           },
                           child: personCard(person),
@@ -319,7 +315,7 @@ class _UserState extends State<User> {
   Widget personCard(Person person) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      color: (_selectedPerson == person.id)
+      color: (_selectedPerson == person)
           ? AppColors.lightBlue
           : AppColors.darkBlue,
       elevation: 1,
