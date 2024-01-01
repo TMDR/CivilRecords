@@ -245,7 +245,6 @@ class _RegisterPageState extends State<RegisterPage> {
                                   controller: dateController,
                                   decoration: const InputDecoration(
                                       labelText: 'DATE',
-                                      filled: true,
                                       prefixIcon: Icon(Icons.calendar_today),
                                       enabledBorder: OutlineInputBorder(
                                           borderSide: BorderSide(
@@ -344,7 +343,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       backgroundColor: MaterialStateProperty.all(
                         _formKey.currentState?.validate() ?? false
                             ? null
-                            : Colors.grey.shade300,
+                            : Colors.grey.shade900,
                       ),
                     ),
                     child: const Text('Register'),
@@ -362,7 +361,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     style: Theme.of(context)
                         .textTheme
                         .bodySmall
-                        ?.copyWith(color: Colors.black),
+                        ?.copyWith(color: Colors.white70),
                   ),
                   TextButton(
                     onPressed: () {

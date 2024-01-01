@@ -194,7 +194,8 @@ class _LoginPageState extends State<LoginPage> {
                                                   MaterialPageRoute(
                                                       builder: (BuildContext
                                                               context) =>
-                                                          const User()));
+                                                          User(
+                                                              dbconn: dbconn)));
                                             }
                                           } else {
                                             if (context.mounted) {
@@ -239,7 +240,8 @@ class _LoginPageState extends State<LoginPage> {
                               onPressed: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                      builder: (context) => const User())),
+                                      builder: (context) =>
+                                          RegisterPage(conn: dbconn))),
                               // onPressed: () => Navigator.push(
                               //     context,
                               //     MaterialPageRoute(

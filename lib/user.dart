@@ -1,25 +1,29 @@
+import 'package:civilrecord/utils/db.dart';
+import 'package:postgres/postgres.dart';
+
 import 'components/multiselect.dart';
 import 'package:civilrecord/values/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:expandable_bottom_sheet/expandable_bottom_sheet.dart';
 import 'components/filters.dart';
+import 'components/models.dart';
 
 class User extends StatefulWidget {
-  const User({super.key});
-
+  final Pdb? dbconn;
+  const User({super.key, required this.dbconn});
   @override
   State<User> createState() => _UserState();
 }
 
 class _UserState extends State<User> {
   var _selectedPerson = -1;
-
+  Pdb? dbconn;
   final GlobalKey<ExpandableBottomSheetState> exkey = GlobalKey();
   var expansionStatus = ExpansionStatus.contracted;
-
   late final NameFilter _nameFilter;
   late final BirthDateFilter _birthDateFilter;
   late final DeathDateFilter _deathDateFilter;
+  List<Person> people = [];
 
   final List<String> items = ['Date of Birth', 'Date of Death'];
   List<String> _selectedItems = [];
@@ -40,6 +44,8 @@ class _UserState extends State<User> {
         context, setStateCallBack, _selectedItemsCallBackRemove);
     _deathDateFilter = DeathDateFilter(
         context, setStateCallBack, _selectedItemsCallBackRemove);
+    //not sure if ill need that one
+    dbconn = widget.dbconn;
   }
 
   void _showMultiSelect() async {
@@ -70,10 +76,10 @@ class _UserState extends State<User> {
     );
   }
 
-  Widget twoPaneLayout(bool big) {
+  Widget twoPaneLayout(bool big, List<Person> people) {
     return Row(
       children: [
-        firstView(context, big),
+        firstView(context, big, people),
         const VerticalDivider(width: 1, thickness: .2),
         Expanded(
           child: details(big),
@@ -82,21 +88,20 @@ class _UserState extends State<User> {
     );
   }
 
-  Widget onePaneLayout(BuildContext context, bool big) {
-    return firstView(context, big);
+  Widget onePaneLayout(BuildContext context, bool big, List<Person> people) {
+    return firstView(context, big, people);
   }
 
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-
     var big = width > 700;
 
-    var mainLayout = onePaneLayout(context, big);
+    var mainLayout = onePaneLayout(context, big, people);
 
     // if width is greater than 700, use two column layout
     if (big) {
-      mainLayout = twoPaneLayout(big);
+      mainLayout = twoPaneLayout(big, people);
     }
 
     if (!big && _selectedPerson != -1) {
@@ -129,14 +134,14 @@ class _UserState extends State<User> {
     );
   }
 
-  Widget firstView(BuildContext context, bool big) {
+  Widget firstView(BuildContext context, bool big, List<Person> people) {
     return SizedBox(
       width: big ? 400 : null,
       child: ExpandableBottomSheet(
         key: exkey,
         persistentContentHeight: 0,
         //This is the widget which will be overlapped by the bottom sheet.
-        background: personList(big),
+        background: personList(people),
         //This is the content of the bottom sheet which will be extendable by dragging
         expandableContent: Container(
           padding:
@@ -193,8 +198,8 @@ class _UserState extends State<User> {
                     ..add(Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: IconButton(
-                        onPressed: () {
-                          exkey.currentState!.expand();
+                        onPressed: () async {
+                          await search();
                         },
                         icon: const Icon(
                           Icons.search,
@@ -211,34 +216,94 @@ class _UserState extends State<User> {
     );
   }
 
-  Widget personList(bool big) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.vertical,
-      child: Container(
-        color: Colors.black12,
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: Wrap(direction: Axis.horizontal, children: [
-              //for test purposes, every card will have an id and will be generated soon
-              for (int i = 0; i < 10; i++)
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _selectedPerson = i;
-                    });
-                  },
-                  child: personCard(i),
+  Future<void> search() async {
+    var firstName = _nameFilter.controllers[0].text;
+    var lastName = _nameFilter.controllers[1].text;
+    var fromDateOfBirth = (_selectedItems.contains("Date of Birth"))
+        ? _birthDateFilter.controllers[0].text
+        : "";
+    var toDateOfBirth = (_selectedItems.contains("Date of Birth"))
+        ? _birthDateFilter.controllers[1].text
+        : "";
+    var fromDateOfDeath = (_selectedItems.contains("Date of Death"))
+        ? _deathDateFilter.controllers[0].text
+        : "";
+    var toDateOfDeath = (_selectedItems.contains("Date of Death"))
+        ? _deathDateFilter.controllers[1].text
+        : "";
+    String select =
+        "SELECT id,first_name,last_name,place_of_birth,date_of_birth,gender FROM PERSON WHERE ";
+    int length = select.length;
+    select =
+        firstName == "" ? select : ("${select}first_name='$firstName' AND ");
+    select = lastName == "" ? select : ("${select}last_name='$lastName' AND ");
+    select = fromDateOfBirth == ""
+        ? select
+        : ("${select}date_of_birth>='$fromDateOfBirth' AND ");
+    select = toDateOfBirth == ""
+        ? select
+        : ("${select}date_of_birth<='$toDateOfBirth' AND ");
+    select = fromDateOfDeath == ""
+        ? select
+        : ("${select}date_of_death>='$fromDateOfDeath' AND ");
+    select = toDateOfDeath == ""
+        ? select
+        : ("${select}date_of_death<='$toDateOfBirth' AND ");
+    if (select.length > length) {
+      select = select.substring(0, select.length - 5);
+    } else {
+      select = "";
+    }
+    Result? resp = select == "" ? null : await dbconn?.execute(select);
+    List<Person> foundpeople = [];
+    var row = resp?.iterator;
+    while (row?.moveNext() ?? false) {
+      foundpeople.add(Person(
+          id: row?.current[0] as int,
+          firstName: row?.current[1] as String,
+          lastName: row?.current[2] as String,
+          placeOfBirth: row?.current[3] as String,
+          dateOfBirth: (row?.current[4] as DateTime).toString().split(" ")[0],
+          dateOfDeath: null,
+          occupation: null,
+          gender: !(row?.current[5] as bool)));
+    }
+    setState(() {
+      people = foundpeople;
+    });
+  }
+
+  Widget personList(List<Person> people) {
+    return people.isNotEmpty
+        ? Scaffold(
+            backgroundColor: Colors.black12,
+            body: SingleChildScrollView(
+              scrollDirection: Axis.vertical,
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: Expanded(
+                    child: Column(children: [
+                      for (Person person in people)
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedPerson = person.id;
+                            });
+                          },
+                          child: personCard(person),
+                        ),
+                      const SizedBox(
+                        height: 220,
+                      ),
+                    ]),
+                  ),
                 ),
-              const SizedBox(
-                height: 220,
-              )
-            ]),
-          ),
-        ),
-      ),
-    );
+              ),
+            ),
+          )
+        : const Center(child: Text("Search for People!"));
   }
 
   Widget filter(String filter) {
@@ -251,46 +316,49 @@ class _UserState extends State<User> {
     }
   }
 
-  Widget personCard(int index) {
+  Widget personCard(Person person) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      color:
-          (_selectedPerson == index) ? AppColors.lightBlue : AppColors.darkBlue,
+      color: (_selectedPerson == person.id)
+          ? AppColors.lightBlue
+          : AppColors.darkBlue,
       elevation: 1,
-      child: const Padding(
-        padding: EdgeInsets.all(8.0),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
         child: SizedBox(
           width: 350,
           child: Row(
             children: [
               Icon(
-                Icons.man_2_rounded,
+                person.gender ? Icons.man_2_rounded : Icons.woman_2_rounded,
                 color: AppColors.grey,
               ),
               Padding(
-                padding: EdgeInsets.all(8.0),
+                padding: const EdgeInsets.all(8.0),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "FirstName LastName",
-                      style: TextStyle(color: AppColors.grey),
+                      "${person.firstName} ${person.lastName}",
+                      style: const TextStyle(color: AppColors.grey),
                     ),
-                    SizedBox(height: 3),
+                    const SizedBox(height: 3),
                     Text(
-                      "Date of Birth: 1/1/1970",
-                      style: TextStyle(color: AppColors.grey, fontSize: 10),
+                      "Date of Birth: ${person.dateOfBirth}",
+                      style:
+                          const TextStyle(color: AppColors.grey, fontSize: 10),
                     ),
                     Text(
-                      "Place of Birth: Beirut",
-                      style: TextStyle(color: AppColors.grey, fontSize: 10),
+                      "Place of Birth: ${person.placeOfBirth}",
+                      style:
+                          const TextStyle(color: AppColors.grey, fontSize: 10),
                     )
                   ],
                 ),
               ),
-              Spacer(),
-              Icon(
+              const Spacer(),
+              const Icon(
                 Icons.arrow_forward_ios_rounded,
                 color: AppColors.grey,
               )

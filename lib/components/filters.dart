@@ -1,12 +1,11 @@
-//unused for now
 import 'package:civilrecord/values/app_colors.dart';
 import 'package:flutter/material.dart';
 
 enum Filters { birthDate, deathDate }
 
 abstract class Filter {
-  final BuildContext context;
   late final List<TextEditingController> controllers;
+  final BuildContext context;
   final void Function() callBack;
   final void Function(String) selectedCallBack;
   Filter(this.context, this.callBack, this.selectedCallBack);

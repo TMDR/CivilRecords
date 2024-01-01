@@ -50,7 +50,7 @@ class Pdb {
         await execute("SELECT * FROM login WHERE email = '$username'");
     if (res!.isEmpty) {
       Result? res = await execute(
-          "INSERT into person(first_name, last_name, place_of_birth, date_of_birth, date_of_death, occupation, gender) VALUES ('$firstname', '$lastname', '$placeOfBirth', '$dateOfBirth'::date, NULL, NULL, B'$gender') RETURNING id;");
+          "INSERT into person(first_name, last_name, place_of_birth, date_of_birth, date_of_death, occupation, gender) VALUES ('$firstname', '$lastname', '$placeOfBirth', '$dateOfBirth'::date, NULL, NULL, ${(gender == 0 ? false : true).toString()}) RETURNING id;");
       if (res!.affectedRows == 1) {
         String? id = res[0][0].toString();
         await execute(
