@@ -2,6 +2,7 @@ import 'components/multiselect.dart';
 import 'package:civilrecord/values/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:expandable_bottom_sheet/expandable_bottom_sheet.dart';
+import 'components/filters.dart';
 
 class User extends StatefulWidget {
   const User({super.key});
@@ -15,15 +16,31 @@ class _UserState extends State<User> {
 
   final GlobalKey<ExpandableBottomSheetState> exkey = GlobalKey();
   var expansionStatus = ExpansionStatus.contracted;
-  TextEditingController fcontroller = TextEditingController();
-  TextEditingController lcontroller = TextEditingController();
-  TextEditingController fromBirthDate = TextEditingController();
-  TextEditingController fromDeathDate = TextEditingController();
-  TextEditingController toDeathDate = TextEditingController();
-  TextEditingController toBirthDate = TextEditingController();
+
+  late final NameFilter _nameFilter;
+  late final BirthDateFilter _birthDateFilter;
+  late final DeathDateFilter _deathDateFilter;
 
   final List<String> items = ['Date of Birth', 'Date of Death'];
   List<String> _selectedItems = [];
+  void _selectedItemsCallBackRemove(String value) {
+    _selectedItems.remove(value);
+  }
+
+  void setStateCallBack() {
+    setState(() {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _nameFilter =
+        NameFilter(context, setStateCallBack, _selectedItemsCallBackRemove);
+    _birthDateFilter = BirthDateFilter(
+        context, setStateCallBack, _selectedItemsCallBackRemove);
+    _deathDateFilter = DeathDateFilter(
+        context, setStateCallBack, _selectedItemsCallBackRemove);
+  }
 
   void _showMultiSelect() async {
     //the order matters
@@ -114,7 +131,7 @@ class _UserState extends State<User> {
 
   Widget firstView(BuildContext context, bool big) {
     return SizedBox(
-      width: big ? 350 : null,
+      width: big ? 400 : null,
       child: ExpandableBottomSheet(
         key: exkey,
         persistentContentHeight: 0,
@@ -122,25 +139,29 @@ class _UserState extends State<User> {
         background: personList(big),
         //This is the content of the bottom sheet which will be extendable by dragging
         expandableContent: Container(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          padding:
+              EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
           color: AppColors.darkBlue,
           child: Padding(
             padding: const EdgeInsets.all(10.0),
             child: Wrap(
-                runSpacing: 10.0,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: List<Widget>.from(_selectedItems
-                    .map(
-                      (e) => filter(e),
-                    )
-                    .toList())
-                  ..add(Center(
+              runSpacing: 10.0,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: List<Widget>.from(_selectedItems
+                  .map(
+                    (e) => filter(e),
+                  )
+                  .toList())
+                ..add(
+                  Center(
                     child: IconButton(
                       color: AppColors.grey,
                       icon: const Icon(Icons.add),
                       onPressed: _showMultiSelect,
                     ),
-                  ))),
+                  ),
+                ),
+            ),
           ),
         ),
         //This widget is sticking above the content and will never be contracted.
@@ -148,13 +169,15 @@ class _UserState extends State<User> {
           decoration: BoxDecoration(
               color: AppColors.darkBlue,
               border: Border.all(color: AppColors.darkBlue),
-              borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20))),
+              borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20), topRight: Radius.circular(20))),
           child: Center(
             child: Column(
               children: [
                 IconButton(
                     onPressed: () {
-                      if (exkey.currentState!.expansionStatus == ExpansionStatus.expanded) {
+                      if (exkey.currentState!.expansionStatus ==
+                          ExpansionStatus.expanded) {
                         exkey.currentState!.contract();
                       } else {
                         exkey.currentState!.expand();
@@ -166,55 +189,8 @@ class _UserState extends State<User> {
                     )),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Flexible(
-                        flex: 45,
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: TextFormField(
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white70,
-                            ),
-                            decoration: const InputDecoration(
-                              enabledBorder:
-                                  OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10.0)), borderSide: BorderSide(color: AppColors.grey)),
-                              focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blueAccent)),
-                              labelStyle: TextStyle(color: AppColors.grey),
-                              fillColor: Colors.white10,
-                              labelText: "First Name",
-                              floatingLabelBehavior: FloatingLabelBehavior.always,
-                            ),
-                            keyboardType: TextInputType.emailAddress,
-                            textInputAction: TextInputAction.next,
-                            controller: fcontroller,
-                          ),
-                        )),
-                    Flexible(
-                      flex: 45,
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: TextFormField(
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white70,
-                          ),
-                          decoration: const InputDecoration(
-                            enabledBorder:
-                                OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10.0)), borderSide: BorderSide(color: AppColors.grey)),
-                            focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blueAccent)),
-                            labelStyle: TextStyle(color: AppColors.grey),
-                            fillColor: Colors.white10,
-                            labelText: "Last Name",
-                            floatingLabelBehavior: FloatingLabelBehavior.always,
-                          ),
-                          keyboardType: TextInputType.emailAddress,
-                          textInputAction: TextInputAction.next,
-                          controller: lcontroller,
-                        ),
-                      ),
-                    ),
-                    Padding(
+                  children: List<Widget>.from(_nameFilter.widget)
+                    ..add(Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: IconButton(
                         onPressed: () {
@@ -225,8 +201,7 @@ class _UserState extends State<User> {
                           color: Colors.white,
                         ),
                       ),
-                    ),
-                  ],
+                    )),
                 ),
               ],
             ),
@@ -257,7 +232,7 @@ class _UserState extends State<User> {
                   child: personCard(i),
                 ),
               const SizedBox(
-                height: 200,
+                height: 220,
               )
             ]),
           ),
@@ -266,137 +241,21 @@ class _UserState extends State<User> {
     );
   }
 
-  //extra filter container except place of birth
-  Widget filterContainer(List<Widget> data, String title) {
-    data.addAll([
-      const Spacer(),
-      IconButton(
-        icon: const Icon(Icons.remove_circle_outlined),
-        color: AppColors.grey,
-        onPressed: () {
-          _selectedItems.remove(title);
-          setState(() {});
-        },
-      ),
-    ]);
-    return InputDecorator(
-      decoration: InputDecoration(
-        labelStyle: const TextStyle(color: AppColors.grey, fontWeight: FontWeight.w500),
-        labelText: title,
-        enabledBorder: OutlineInputBorder(
-          borderSide: const BorderSide(color: AppColors.grey),
-          borderRadius: BorderRadius.circular(10.0),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.only(left: 8.0),
-        child: Row(children: data),
-      ),
-    );
-  }
-
   Widget filter(String filter) {
     if (filter == items[0]) {
-      return dateOfBirth();
+      return _birthDateFilter.widget;
     } else if (filter == items[1]) {
-      return dateOfDeath();
+      return _deathDateFilter.widget;
     } else {
       return const Text('ERROR');
     }
   }
 
-  Widget dateOfBirth() {
-    return filterContainer([
-      Flexible(
-        child: TextField(
-          style: const TextStyle(color: AppColors.grey),
-          controller: fromBirthDate,
-          decoration: const InputDecoration(
-              labelStyle: TextStyle(color: AppColors.grey),
-              labelText: 'From',
-              filled: true,
-              prefixIcon: Icon(
-                Icons.calendar_today,
-                color: AppColors.grey,
-              ),
-              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppColors.lightBlue))),
-          readOnly: true,
-          onTap: () {
-            selectDate(true, true);
-          },
-        ),
-      ),
-      const SizedBox(width: 8.0),
-      Flexible(
-        child: TextField(
-          style: const TextStyle(color: AppColors.grey),
-          controller: toBirthDate,
-          decoration: const InputDecoration(
-              labelStyle: TextStyle(color: AppColors.grey),
-              labelText: 'To',
-              filled: true,
-              prefixIcon: Icon(
-                Icons.calendar_today,
-                color: AppColors.grey,
-              ),
-              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppColors.lightBlue))),
-          readOnly: true,
-          onTap: () {
-            selectDate(false, true);
-          },
-        ),
-      )
-    ], 'Date of Birth');
-  }
-
-  Widget dateOfDeath() {
-    return filterContainer([
-      Flexible(
-        child: TextField(
-          style: const TextStyle(color: AppColors.grey),
-          controller: fromDeathDate,
-          decoration: const InputDecoration(
-              labelStyle: TextStyle(color: AppColors.grey),
-              labelText: 'From',
-              filled: true,
-              prefixIcon: Icon(
-                Icons.calendar_today,
-                color: AppColors.grey,
-              ),
-              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppColors.lightBlue))),
-          readOnly: true,
-          onTap: () {
-            selectDate(true, false);
-          },
-        ),
-      ),
-      const SizedBox(width: 8.0),
-      Flexible(
-        child: TextField(
-          style: const TextStyle(color: AppColors.grey),
-          controller: toDeathDate,
-          decoration: const InputDecoration(
-              labelStyle: TextStyle(color: AppColors.grey),
-              labelText: 'To',
-              filled: true,
-              prefixIcon: Icon(
-                Icons.calendar_today,
-                color: AppColors.grey,
-              ),
-              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppColors.lightBlue))),
-          readOnly: true,
-          onTap: () {
-            selectDate(false, false);
-          },
-        ),
-      )
-    ], 'Date of Death');
-  }
-
   Widget personCard(int index) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      color: (_selectedPerson == index) ? AppColors.lightBlue : AppColors.darkBlue,
+      color:
+          (_selectedPerson == index) ? AppColors.lightBlue : AppColors.darkBlue,
       elevation: 1,
       child: const Padding(
         padding: EdgeInsets.all(8.0),
@@ -440,26 +299,5 @@ class _UserState extends State<User> {
         ),
       ),
     );
-  }
-
-  Future<void> selectDate(bool from, bool birth) async {
-    DateTime? selected = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(1900, 1, 1), lastDate: DateTime.now());
-    if (selected != null) {
-      setState(() {
-        if (birth) {
-          if (from) {
-            fromBirthDate.text = selected.toString().split(" ")[0];
-          } else {
-            toBirthDate.text = selected.toString().split(" ")[0];
-          }
-        } else {
-          if (from) {
-            fromDeathDate.text = selected.toString().split(" ")[0];
-          } else {
-            toDeathDate.text = selected.toString().split(" ")[0];
-          }
-        }
-      });
-    }
   }
 }

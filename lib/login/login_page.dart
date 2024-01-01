@@ -3,7 +3,6 @@ import 'package:civilrecord/user.dart';
 import 'package:flutter/material.dart';
 import '../components/app_text_form_field.dart';
 import '../utils/extensions.dart';
-import '../values/app_colors.dart';
 import '../values/app_constants.dart';
 import 'package:civilrecord/utils/db.dart';
 
@@ -42,11 +41,13 @@ class _LoginPageState extends State<LoginPage> {
           if (snapshot.data?.$2 != null) {
             if (c++ == 1) {
               if (snapshot.data?.$2 == true) {
-                WidgetsBinding.instance
-                    .addPostFrameCallback((_) => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Connected to database!"))));
+                WidgetsBinding.instance.addPostFrameCallback((_) =>
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text("Connected to database!"))));
               } else {
-                WidgetsBinding.instance
-                    .addPostFrameCallback((_) => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't connect to Database!"))));
+                WidgetsBinding.instance.addPostFrameCallback((_) =>
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text("Couldn't connect to Database!"))));
               }
             }
             return Scaffold(
@@ -83,112 +84,142 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 30),
                         child: Center(
                           child: Container(
                             constraints: const BoxConstraints(maxWidth: 500),
-                            child: Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, children: [
-                              AppTextFormField(
-                                labelText: 'Email',
-                                keyboardType: TextInputType.emailAddress,
-                                textInputAction: TextInputAction.next,
-                                onChanged: (value) {
-                                  _formKey.currentState?.validate();
-                                },
-                                validator: (value) {
-                                  return value!.isEmpty
-                                      ? 'Please, Enter Email Address'
-                                      : AppConstants.emailRegex.hasMatch(value)
-                                          ? null
-                                          : 'Invalid Email Address';
-                                },
-                                controller: emailController,
-                              ),
-                              AppTextFormField(
-                                labelText: 'Password',
-                                keyboardType: TextInputType.visiblePassword,
-                                textInputAction: TextInputAction.done,
-                                onChanged: (value) {
-                                  _formKey.currentState?.validate();
-                                },
-                                validator: (value) {
-                                  return value!.isEmpty
-                                      ? 'Please, Enter Password'
-                                      : AppConstants.passwordRegex.hasMatch(value)
-                                          ? null
-                                          : 'Invalid Password';
-                                },
-                                controller: passwordController,
-                                obscureText: isObscure,
-                                suffixIcon: Padding(
-                                  padding: const EdgeInsets.only(right: 15),
-                                  child: IconButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        isObscure = !isObscure;
-                                      });
-                                    },
-                                    style: ButtonStyle(
-                                      minimumSize: MaterialStateProperty.all(
-                                        const Size(48, 48),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                AppTextFormField(
+                                  labelText: 'Email',
+                                  keyboardType: TextInputType.emailAddress,
+                                  textInputAction: TextInputAction.next,
+                                  onChanged: (value) {
+                                    _formKey.currentState?.validate();
+                                  },
+                                  validator: (value) {
+                                    return value!.isEmpty
+                                        ? 'Please, Enter Email Address'
+                                        : AppConstants.emailRegex
+                                                .hasMatch(value)
+                                            ? null
+                                            : 'Invalid Email Address';
+                                  },
+                                  controller: emailController,
+                                ),
+                                AppTextFormField(
+                                  labelText: 'Password',
+                                  keyboardType: TextInputType.visiblePassword,
+                                  textInputAction: TextInputAction.done,
+                                  onChanged: (value) {
+                                    _formKey.currentState?.validate();
+                                  },
+                                  validator: (value) {
+                                    return value!.isEmpty
+                                        ? 'Please, Enter Password'
+                                        : AppConstants.passwordRegex
+                                                .hasMatch(value)
+                                            ? null
+                                            : 'Invalid Password';
+                                  },
+                                  controller: passwordController,
+                                  obscureText: isObscure,
+                                  suffixIcon: Padding(
+                                    padding: const EdgeInsets.only(right: 15),
+                                    child: IconButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          isObscure = !isObscure;
+                                        });
+                                      },
+                                      style: ButtonStyle(
+                                        minimumSize: MaterialStateProperty.all(
+                                          const Size(48, 48),
+                                        ),
                                       ),
-                                    ),
-                                    icon: Icon(
-                                      isObscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                                      color: Colors.white,
+                                      icon: Icon(
+                                        isObscure
+                                            ? Icons.visibility_off_outlined
+                                            : Icons.visibility_outlined,
+                                        color: Colors.white,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              TextButton(
-                                onPressed: () {},
-                                style: Theme.of(context).textButtonTheme.style,
-                                child: Text(
-                                  'Forgot Password?',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: Colors.white70,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                TextButton(
+                                  onPressed: () {},
+                                  style:
+                                      Theme.of(context).textButtonTheme.style,
+                                  child: Text(
+                                    'Forgot Password?',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: Colors.white70,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(
-                                height: 15,
-                              ),
-                              FilledButton(
-                                onPressed: _formKey.currentState?.validate() ?? false
-                                    ? () async {
-                                        bool? res = await snapshot.data?.$1!.checkCredentials(emailController.text, passwordController.text);
-                                        if ((res ?? false) || (emailController.text == "admin@gmail.com")) {
-                                          if (context.mounted) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(
-                                                content: Text('Logged In!'),
-                                              ),
-                                            );
-                                            emailController.clear();
-                                            passwordController.clear();
+                                const SizedBox(
+                                  height: 15,
+                                ),
+                                FilledButton(
+                                  onPressed: _formKey.currentState
+                                              ?.validate() ??
+                                          false
+                                      ? () async {
+                                          bool? res = await snapshot.data?.$1!
+                                              .checkCredentials(
+                                                  emailController.text,
+                                                  passwordController.text);
+                                          if ((res ?? false) ||
+                                              (emailController.text ==
+                                                  "admin@gmail.com")) {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                const SnackBar(
+                                                  content: Text('Logged In!'),
+                                                ),
+                                              );
+                                              emailController.clear();
+                                              passwordController.clear();
 
-                                            Navigator.pushReplacement(context, MaterialPageRoute(builder: (BuildContext context) => const User()));
-                                          }
-                                        } else {
-                                          if (context.mounted) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(
-                                                content: Text('Username or Password invalid!'),
-                                              ),
-                                            );
+                                              Navigator.pushReplacement(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                      builder: (BuildContext
+                                                              context) =>
+                                                          const User()));
+                                            }
+                                          } else {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                      'Username or Password invalid!'),
+                                                ),
+                                              );
+                                            }
                                           }
                                         }
-                                      }
-                                    : null,
-                                style: const ButtonStyle().copyWith(
-                                  backgroundColor: MaterialStateProperty.all(
-                                    _formKey.currentState?.validate() ?? false ? null : Colors.grey.shade300,
+                                      : null,
+                                  style: const ButtonStyle().copyWith(
+                                    backgroundColor: MaterialStateProperty.all(
+                                      _formKey.currentState?.validate() ?? false
+                                          ? null
+                                          : Colors.grey.shade900,
+                                    ),
                                   ),
+                                  child: const Text('Login'),
                                 ),
-                                child: const Text('Login'),
-                              ),
-                            ]),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -199,10 +230,16 @@ class _LoginPageState extends State<LoginPage> {
                           children: [
                             Text(
                               "Don't have an account?",
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: Colors.white70),
                             ),
                             TextButton(
-                              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const User())),
+                              onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => const User())),
                               // onPressed: () => Navigator.push(
                               //     context,
                               //     MaterialPageRoute(
@@ -211,7 +248,10 @@ class _LoginPageState extends State<LoginPage> {
                               style: Theme.of(context).textButtonTheme.style,
                               child: Text(
                                 'Register',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
                                       color: Colors.white70,
                                       fontWeight: FontWeight.bold,
                                     ),
