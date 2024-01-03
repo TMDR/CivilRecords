@@ -6,15 +6,42 @@ import 'package:expandable_bottom_sheet/expandable_bottom_sheet.dart';
 import 'components/filters.dart';
 import 'components/models.dart';
 
+class UserPage {
+  bool editMode = false;
+  late List<TextEditingController> controllers;
+  Person data;
+  UserPage({required this.data}) {
+    controllers = [
+      TextEditingController(),
+      TextEditingController(),
+      TextEditingController(),
+      TextEditingController(),
+      TextEditingController(),
+      TextEditingController(),
+      TextEditingController()
+    ];
+    controllers[0].text = data.firstName;
+    controllers[1].text = data.lastName;
+    controllers[2].text = data.gender ? "Male" : "Female";
+    controllers[3].text = data.placeOfBirth;
+    controllers[4].text = data.dateOfBirth;
+    controllers[5].text = data.dateOfDeath ?? "None";
+    controllers[6].text = data.occupation != null
+        ? "${data.occupation?.organization} as ${data.occupation?.trait}"
+        : "None";
+  }
+}
+
 class User extends StatefulWidget {
   final Pdb? dbconn;
-  const User({super.key, required this.dbconn});
+  final int? id;
+  const User({super.key, required this.dbconn, required this.id});
   @override
   State<User> createState() => _UserState();
 }
 
 class _UserState extends State<User> {
-  Person? _selectedPerson;
+  UserPage? _userPage;
   Pdb? dbconn;
   final GlobalKey<ExpandableBottomSheetState> exkey = GlobalKey();
   var expansionStatus = ExpansionStatus.contracted;
@@ -62,8 +89,101 @@ class _UserState extends State<User> {
     }
   }
 
+  Widget detailsCard(String title, String? data, IconData icon, int i) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 350),
+      child: Card(
+        elevation: 5,
+        color: AppColors.lightBlue,
+        child: Padding(
+          padding: const EdgeInsets.all(15.0),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(icon),
+            const SizedBox(width: 20),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w600),
+                ),
+                data != null
+                    ? Container(
+                        constraints:
+                            const BoxConstraints(maxWidth: 200, maxHeight: 30),
+                        child: TextFormField(
+                          decoration: !(_userPage?.editMode ?? false)
+                              ? const InputDecoration(
+                                  border: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  errorBorder: InputBorder.none,
+                                  disabledBorder: InputBorder.none)
+                              : const InputDecoration(
+                                  border: UnderlineInputBorder(
+                                      borderRadius:
+                                          BorderRadius.all(Radius.circular(5)),
+                                      borderSide:
+                                          BorderSide(color: AppColors.grey))),
+                          controller: _userPage?.controllers[i],
+                          readOnly: !(_userPage?.editMode ?? false),
+                        ),
+                      )
+                    : const Text("None",
+                        style: TextStyle(fontStyle: FontStyle.italic)),
+              ],
+            ),
+            ...(_userPage?.data.id != (widget.id ?? 0) &&
+                    ((widget.id ?? 0) != 0))
+                ? []
+                : [
+                    const Spacer(),
+                    IconButton(
+                      icon: Icon(!(_userPage?.editMode ?? false)
+                          ? Icons.edit
+                          : Icons.check),
+                      onPressed: () async {
+                        if (!(_userPage?.editMode ?? false)) {
+                          _userPage?.editMode = true;
+                        } else {
+                          _userPage?.editMode = false;
+                          bool? resp = await dbconn?.updateUser(
+                              _userPage?.data.id ?? 0,
+                              _userPage?.controllers[0].text ?? "",
+                              _userPage?.controllers[1].text ?? "",
+                              _userPage?.controllers[2].text ?? "",
+                              _userPage?.controllers[3].text ?? "",
+                              _userPage?.controllers[4].text ?? "",
+                              _userPage?.controllers[5].text ?? "");
+                          if (context.mounted) {
+                            if (resp ?? false) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Updated!'),
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Something Went Wrong!'),
+                                ),
+                              );
+                            }
+                          }
+                        }
+                        setState(() {});
+                      },
+                    )
+                  ]
+          ]),
+        ),
+      ),
+    );
+  }
+
   Widget details(bool big) {
-    if (_selectedPerson == null) {
+    if (_userPage == null) {
       return const Center(
         child: Text('No Person selected'),
       );
@@ -72,34 +192,50 @@ class _UserState extends State<User> {
     return Center(
       child: Container(
         alignment: Alignment.topLeft,
+        height: double.infinity,
         width: double.infinity,
         color: Colors.black12,
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Icon(
-                  Icons.account_circle_outlined,
-                  color: AppColors.grey,
-                  size: MediaQuery.of(context).size.height * 0.2,
-                ),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(15.0),
+            child: Center(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.account_circle_outlined,
+                    color: AppColors.grey,
+                    size: 150,
+                  ),
+                  detailsCard("First Name", _userPage?.controllers[0].text,
+                      Icons.person, 0),
+                  const SizedBox(height: 4.0),
+                  detailsCard("Last Name", _userPage?.controllers[1].text,
+                      Icons.person, 1),
+                  const SizedBox(height: 4.0),
+                  detailsCard(
+                      "Gender",
+                      _userPage?.controllers[2].text,
+                      _userPage?.data.gender ?? true
+                          ? Icons.male
+                          : Icons.female,
+                      2),
+                  const SizedBox(height: 4.0),
+                  detailsCard("Place of Birth", _userPage?.controllers[3].text,
+                      Icons.person, 3),
+                  const SizedBox(height: 4.0),
+                  detailsCard("Date of Birth", _userPage?.controllers[4].text,
+                      Icons.cake, 4),
+                  const SizedBox(height: 4.0),
+                  detailsCard("Date of Death", _userPage?.controllers[5].text,
+                      Icons.spa_outlined, 5),
+                  const SizedBox(height: 4.0),
+                  detailsCard("Occupation", _userPage?.controllers[6].text,
+                      Icons.work_outline, 6)
+                ],
               ),
-              Text("First Name: ${_selectedPerson?.firstName}"),
-              const SizedBox(height: 4.0),
-              Text("Last Name: ${_selectedPerson?.lastName}"),
-              const SizedBox(height: 4.0),
-              Text(
-                  "Gender: ${_selectedPerson?.gender ?? true ? "Male" : "Female"}"),
-              const SizedBox(height: 4.0),
-              Text("Date Of Birth: ${_selectedPerson?.dateOfBirth}"),
-              const SizedBox(height: 4.0),
-              Text("Date of Death: ${_selectedPerson?.dateOfDeath ?? "None"}"),
-              const SizedBox(height: 4.0),
-              Text(
-                  "Occupation: ${_selectedPerson?.occupation != null ? "${_selectedPerson?.occupation?.organization} as ${_selectedPerson?.occupation?.trait}" : "None"}")
-            ],
+            ),
           ),
         ),
       ),
@@ -134,12 +270,12 @@ class _UserState extends State<User> {
       mainLayout = twoPaneLayout(big, people);
     }
 
-    if (!big && _selectedPerson != null) {
+    if (!big && _userPage != null) {
       mainLayout = details(big);
     }
 
     return Scaffold(
-      appBar: (!big && _selectedPerson != null)
+      appBar: (!big && _userPage != null)
           ? AppBar(
               backgroundColor: AppColors.darkBlue,
               foregroundColor: Colors.white,
@@ -149,7 +285,7 @@ class _UserState extends State<User> {
                 icon: const Icon(Icons.arrow_back),
                 onPressed: () {
                   setState(() {
-                    _selectedPerson = null;
+                    _userPage = null;
                   });
                 },
               ),
@@ -279,26 +415,23 @@ class _UserState extends State<User> {
                 padding: const EdgeInsets.all(8.0),
                 child: Align(
                   alignment: Alignment.topCenter,
-                  child: Expanded(
-                    child: Column(children: [
-                      for (Person person in people)
-                        GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedPerson = person;
-                            });
-                          },
-                          child: personCard(person),
-                        ),
-                      const SizedBox(
-                        height: 220,
+                  child: Column(children: [
+                    for (Person person in people)
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _userPage = UserPage(data: person);
+                          });
+                        },
+                        child: personCard(person),
                       ),
-                    ]),
-                  ),
+                    const SizedBox(
+                      height: 220,
+                    ),
+                  ]),
                 ),
               ),
-            ),
-          )
+            ))
         : const Center(child: Text("Search for People!"));
   }
 
@@ -315,7 +448,7 @@ class _UserState extends State<User> {
   Widget personCard(Person person) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      color: (_selectedPerson == person)
+      color: (_userPage?.data == person)
           ? AppColors.lightBlue
           : AppColors.darkBlue,
       elevation: 1,

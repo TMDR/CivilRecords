@@ -27,14 +27,41 @@ class Pdb {
     }
   }
 
-  Future<bool?> checkCredentials(String username, String password) async {
+  Future<bool?> updateUser(
+      int id,
+      String firstname,
+      String lastname,
+      String gender,
+      String placeOfBirth,
+      String dateOfBirth,
+      String dateOfDeath) async {
+    if (id == 0 ||
+        [firstname, lastname, gender, placeOfBirth, dateOfBirth, dateOfDeath]
+            .contains("")) {
+      return false;
+    }
+    String query =
+        "update Person SET first_name='$firstname',last_name='$lastname',gender=${gender == "Female" ? 'True' : 'False'},place_of_birth='$placeOfBirth',date_of_birth='$dateOfBirth'::date,date_of_death=${dateOfDeath == "None" ? "NULL" : "'$dateOfDeath'::date"}  WHERE id=$id";
+    Result? res = await execute(query);
+    if (res == null) {
+      return false;
+    } else if (res.affectedRows == 1) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  Future<int?> checkCredentials(String username, String password) async {
     //unique email, thus it suffices to try to find a row where username and password match
     Result? res = await execute(
-        "SELECT * FROM login WHERE email = '$username' AND password = '$password'");
-    if (res!.isEmpty) {
-      return false;
+        "SELECT id FROM login WHERE email = '$username' AND password = '$password'");
+    if (res?.isEmpty ?? true) {
+      return 0;
     } else {
-      return true;
+      var it = res?.iterator;
+      it?.moveNext();
+      return it?.current[0] as int;
     }
   }
 

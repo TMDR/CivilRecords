@@ -172,11 +172,11 @@ class _LoginPageState extends State<LoginPage> {
                                               ?.validate() ??
                                           false
                                       ? () async {
-                                          bool? res = await snapshot.data?.$1!
+                                          int? res = await snapshot.data?.$1!
                                               .checkCredentials(
                                                   emailController.text,
                                                   passwordController.text);
-                                          if ((res ?? false) ||
+                                          if (((res ?? 0) != 0) ||
                                               (emailController.text ==
                                                   "admin@gmail.com")) {
                                             if (context.mounted) {
@@ -195,7 +195,8 @@ class _LoginPageState extends State<LoginPage> {
                                                       builder: (BuildContext
                                                               context) =>
                                                           User(
-                                                              dbconn: dbconn)));
+                                                              dbconn: dbconn,
+                                                              id: res)));
                                             }
                                           } else {
                                             if (context.mounted) {
