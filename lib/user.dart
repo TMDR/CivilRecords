@@ -6,32 +6,6 @@ import 'package:expandable_bottom_sheet/expandable_bottom_sheet.dart';
 import 'components/filters.dart';
 import 'components/models.dart';
 
-class UserPage {
-  bool editMode = false;
-  late List<TextEditingController> controllers;
-  Person data;
-  UserPage({required this.data}) {
-    controllers = [
-      TextEditingController(),
-      TextEditingController(),
-      TextEditingController(),
-      TextEditingController(),
-      TextEditingController(),
-      TextEditingController(),
-      TextEditingController()
-    ];
-    controllers[0].text = data.firstName;
-    controllers[1].text = data.lastName;
-    controllers[2].text = data.gender ? "Male" : "Female";
-    controllers[3].text = data.placeOfBirth;
-    controllers[4].text = data.dateOfBirth;
-    controllers[5].text = data.dateOfDeath ?? "None";
-    controllers[6].text = data.occupation != null
-        ? "${data.occupation?.organization} as ${data.occupation?.trait}"
-        : "None";
-  }
-}
-
 class User extends StatefulWidget {
   final Pdb? dbconn;
   final int? id;
@@ -148,6 +122,7 @@ class _UserState extends State<User> {
                           _userPage?.editMode = true;
                         } else {
                           _userPage?.editMode = false;
+                          //TODO: occupation stuff
                           bool? resp = await dbconn?.updateUser(
                               _userPage?.data.id ?? 0,
                               _userPage?.controllers[0].text ?? "",
@@ -189,52 +164,111 @@ class _UserState extends State<User> {
       );
     }
 
-    return Center(
-      child: Container(
-        alignment: Alignment.topLeft,
-        height: double.infinity,
-        width: double.infinity,
-        color: Colors.black12,
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(15.0),
-            child: Center(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.account_circle_outlined,
-                    color: AppColors.grey,
-                    size: 150,
+    return Container(
+      alignment: Alignment.topLeft,
+      height: double.infinity,
+      width: double.infinity,
+      color: Colors.black12,
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.only(left: 15.0, bottom: 15, top: 15),
+          child: Center(
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.account_circle_outlined,
+                        color: AppColors.grey,
+                        size: 150,
+                      ),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        children: [
+                          detailsCard("First Name",
+                              _userPage?.controllers[0].text, Icons.person, 0),
+                          const SizedBox(height: 4.0),
+                          detailsCard("Last Name",
+                              _userPage?.controllers[1].text, Icons.person, 1),
+                        ],
+                      ),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        children: [
+                          detailsCard(
+                              "Gender",
+                              _userPage?.controllers[2].text,
+                              _userPage?.data.gender ?? true
+                                  ? Icons.male
+                                  : Icons.female,
+                              2),
+                          const SizedBox(height: 4.0),
+                          detailsCard("Place of Birth",
+                              _userPage?.controllers[3].text, Icons.person, 3),
+                        ],
+                      ),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        children: [
+                          detailsCard("Date of Birth",
+                              _userPage?.controllers[4].text, Icons.cake, 4),
+                          const SizedBox(height: 4.0),
+                          detailsCard(
+                              "Date of Death",
+                              _userPage?.controllers[5].text,
+                              Icons.spa_outlined,
+                              5),
+                        ],
+                      ),
+                      const SizedBox(height: 4.0),
+                      detailsCard("Occupation", _userPage?.controllers[6].text,
+                          Icons.work_outline, 6),
+                      const SizedBox(height: 4.0),
+                    ],
                   ),
-                  detailsCard("First Name", _userPage?.controllers[0].text,
-                      Icons.person, 0),
-                  const SizedBox(height: 4.0),
-                  detailsCard("Last Name", _userPage?.controllers[1].text,
-                      Icons.person, 1),
-                  const SizedBox(height: 4.0),
-                  detailsCard(
-                      "Gender",
-                      _userPage?.controllers[2].text,
-                      _userPage?.data.gender ?? true
-                          ? Icons.male
-                          : Icons.female,
-                      2),
-                  const SizedBox(height: 4.0),
-                  detailsCard("Place of Birth", _userPage?.controllers[3].text,
-                      Icons.person, 3),
-                  const SizedBox(height: 4.0),
-                  detailsCard("Date of Birth", _userPage?.controllers[4].text,
-                      Icons.cake, 4),
-                  const SizedBox(height: 4.0),
-                  detailsCard("Date of Death", _userPage?.controllers[5].text,
-                      Icons.spa_outlined, 5),
-                  const SizedBox(height: 4.0),
-                  detailsCard("Occupation", _userPage?.controllers[6].text,
-                      Icons.work_outline, 6)
-                ],
-              ),
+                ),
+                const SizedBox(height: 4.0),
+                Container(
+                    color: AppColors.blue,
+                    constraints:
+                        const BoxConstraints(minWidth: 400, maxWidth: 401),
+                    child: FutureBuilder(
+                      future: dbconn?.getRelated(_userPage?.data.id ?? 0),
+                      builder: (context, snapshot) {
+                        if (snapshot.data != null) {
+                          return SingleChildScrollView(
+                            child: ExpansionTile(
+                              title: const Text("Related People"),
+                              children: [
+                                for (Person person in snapshot.data?.keys ?? [])
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _userPage = UserPage(data: person);
+                                      });
+                                    },
+                                    child: personCard(person,
+                                        relation: snapshot.data?[person]),
+                                  ),
+                                const SizedBox(
+                                  height: 220,
+                                ),
+                              ],
+                            ),
+                          );
+                        } else {
+                          return const ExpansionTile(
+                            title: Text("Related People"),
+                            children: [Text("Loading...")],
+                          );
+                        }
+                      },
+                    )),
+              ],
             ),
           ),
         ),
@@ -261,7 +295,7 @@ class _UserState extends State<User> {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    var big = width > 700;
+    var big = width > 752;
 
     var mainLayout = onePaneLayout(context, big, people);
 
@@ -307,7 +341,7 @@ class _UserState extends State<User> {
         key: exkey,
         persistentContentHeight: 0,
         //This is the widget which will be overlapped by the bottom sheet.
-        background: personList(people),
+        background: personList(),
         //This is the content of the bottom sheet which will be extendable by dragging
         expandableContent: Container(
           padding:
@@ -405,7 +439,7 @@ class _UserState extends State<User> {
     });
   }
 
-  Widget personList(List<Person> people) {
+  Widget personList() {
     return people.isNotEmpty
         ? Scaffold(
             backgroundColor: Colors.black12,
@@ -415,24 +449,29 @@ class _UserState extends State<User> {
                 padding: const EdgeInsets.all(8.0),
                 child: Align(
                   alignment: Alignment.topCenter,
-                  child: Column(children: [
-                    for (Person person in people)
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _userPage = UserPage(data: person);
-                          });
-                        },
-                        child: personCard(person),
-                      ),
-                    const SizedBox(
-                      height: 220,
-                    ),
-                  ]),
+                  child: Column(children: peopleWidgets(null)),
                 ),
               ),
             ))
         : const Center(child: Text("Search for People!"));
+  }
+
+  List<Widget> peopleWidgets(List<Person>? data) {
+    data ??= people;
+    return [
+      for (Person person in data)
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _userPage = UserPage(data: person);
+            });
+          },
+          child: personCard(person),
+        ),
+      const SizedBox(
+        height: 220,
+      ),
+    ];
   }
 
   Widget filter(String filter) {
@@ -445,7 +484,7 @@ class _UserState extends State<User> {
     }
   }
 
-  Widget personCard(Person person) {
+  Widget personCard(Person person, {String? relation}) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       color: (_userPage?.data == person)
@@ -482,7 +521,14 @@ class _UserState extends State<User> {
                       "Place of Birth: ${person.placeOfBirth}",
                       style:
                           const TextStyle(color: AppColors.grey, fontSize: 10),
-                    )
+                    ),
+                    relation != null
+                        ? Text(
+                            "Relation: $relation",
+                            style: const TextStyle(
+                                color: AppColors.grey, fontSize: 10),
+                          )
+                        : Container()
                   ],
                 ),
               ),

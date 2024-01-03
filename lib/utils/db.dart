@@ -52,6 +52,56 @@ class Pdb {
     }
   }
 
+  Future<Map<Person, String>?> getRelated(int id) async {
+    String query = """ 
+
+    SELECT person.id,person.first_name,person.last_name,place_of_birth,date_of_birth,date_of_death,gender,
+organization.name as Organization,
+	                            traits.trait_val, case when person.id = person2_id OR relation_types.name = 'spouse' then relation_types.name else 'parent' end as relation_name FROM PERSON 
+INNER JOIN relation ON 
+(relation.person1_id=person.id AND relation.person2_id=$id)
+OR 
+(relation.person2_id=person.id AND relation.person1_id=$id)
+INNER JOIN relation_types ON relation_type = type_id
+left OUTER JOIN worker ON worker.personid = person.id
+left OUTER JOIN traits ON worker.trait = traits.traitid 
+left OUTER JOIN organization ON worker.orgid = organization.id
+    
+    """;
+    Result? resp = await execute(query);
+    if (resp == null) {
+      return null;
+    }
+    Map<Person, String> foundpeople = {};
+    var row = resp.iterator;
+    while (row.moveNext()) {
+      foundpeople.addEntries(
+        [
+          MapEntry(
+              Person(
+                id: row.current[0] as int,
+                firstName: row.current[1] as String,
+                lastName: row.current[2] as String,
+                placeOfBirth: row.current[3] as String,
+                dateOfBirth:
+                    (row.current[4] as DateTime).toString().split(" ")[0],
+                dateOfDeath: (row.current[5] as DateTime? ?? "None")
+                    .toString()
+                    .split(" ")[0],
+                gender: !(row.current[6] as bool),
+                occupation: row.current[7] != null
+                    ? Occupation(
+                        organization: row.current[7] as String,
+                        trait: row.current[8] as String)
+                    : null,
+              ),
+              row.current[9] as String)
+        ],
+      );
+    }
+    return foundpeople;
+  }
+
   Future<int?> checkCredentials(String username, String password) async {
     //unique email, thus it suffices to try to find a row where username and password match
     Result? res = await execute(
@@ -104,9 +154,9 @@ class Pdb {
 	                            organization.name as Organization,
 	                            traits.trait_val
 
-                      FROM PERSON FULL OUTER JOIN worker ON worker.personid = person.id
-			                            FULL OUTER JOIN traits ON worker.trait = traits.traitid 
-			                            FULL OUTER JOIN organization ON worker.orgid = organization.id  
+                      FROM PERSON LEFT JOIN worker ON worker.personid = person.id
+			                            LEFT JOIN traits ON worker.trait = traits.traitid 
+			                            LEFT JOIN organization ON worker.orgid = organization.id  
                       WHERE """;
     int length = select.length;
     select =
@@ -140,7 +190,8 @@ class Pdb {
           lastName: row?.current[2] as String,
           placeOfBirth: row?.current[3] as String,
           dateOfBirth: (row?.current[4] as DateTime).toString().split(" ")[0],
-          dateOfDeath: row?.current[5] as String?,
+          dateOfDeath:
+              (row?.current[5] as DateTime? ?? "None").toString().split(" ")[0],
           gender: !(row?.current[6] as bool),
           occupation: row?.current[7] != null
               ? Occupation(
