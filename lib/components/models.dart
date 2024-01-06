@@ -53,3 +53,23 @@ class UserPage {
         : "None";
   }
 }
+
+class OccupationData {
+  int id;
+  String title;
+  List<Trait> traits;
+  String owner;
+  bool isExpanded;
+  OccupationData(
+      {required this.id,
+      required this.title,
+      required this.traits,
+      required this.owner,
+      this.isExpanded = false});
+}
+
+class Trait {
+  int id;
+  String value;
+  Trait({required this.id, required this.value});
+}

@@ -1,3 +1,4 @@
+import 'package:civilrecord/components/occupationselect.dart';
 import 'package:civilrecord/utils/db.dart';
 import 'components/multiselect.dart';
 import 'package:civilrecord/values/app_colors.dart';
@@ -43,8 +44,38 @@ class _UserState extends State<User> {
         context, setStateCallBack, _selectedItemsCallBackRemove);
     _deathDateFilter = DeathDateFilter(
         context, setStateCallBack, _selectedItemsCallBackRemove);
-    //not sure if ill need that one
+    //not sure if i'll need that one
     dbconn = widget.dbconn;
+  }
+
+  void _showOccupationSelect(List<OccupationData> data) async {
+    final List<Object>? results = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return OccupationSelect(data: data);
+      },
+    );
+    if (results != null) {
+      bool? resp = await dbconn?.setOccupation(
+          (_userPage?.data.occupation != null),
+          results[0] as int,
+          results[1] as int,
+          _userPage?.data.id as int);
+      if (resp == false || resp == null) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Erro!'),
+          ));
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Occupation Set!'),
+          ));
+        }
+      }
+      _userPage?.controllers[6].text = '${results[2]} as ${results[3]}';
+    }
   }
 
   void _showMultiSelect() async {
@@ -63,7 +94,8 @@ class _UserState extends State<User> {
     }
   }
 
-  Widget detailsCard(String title, String? data, IconData icon, int i) {
+  Widget detailsCard(
+      String title, String? data, IconData icon, int i, bool isOccupation) {
     return Container(
       constraints: const BoxConstraints(maxWidth: 350),
       child: Card(
@@ -118,36 +150,42 @@ class _UserState extends State<User> {
                           ? Icons.edit
                           : Icons.check),
                       onPressed: () async {
-                        if (!(_userPage?.editMode ?? false)) {
-                          _userPage?.editMode = true;
-                        } else {
-                          _userPage?.editMode = false;
-                          //TODO: occupation stuff
-                          bool? resp = await dbconn?.updateUser(
-                              _userPage?.data.id ?? 0,
-                              _userPage?.controllers[0].text ?? "",
-                              _userPage?.controllers[1].text ?? "",
-                              _userPage?.controllers[2].text ?? "",
-                              _userPage?.controllers[3].text ?? "",
-                              _userPage?.controllers[4].text ?? "",
-                              _userPage?.controllers[5].text ?? "");
-                          if (context.mounted) {
-                            if (resp ?? false) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Updated!'),
-                                ),
-                              );
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Something Went Wrong!'),
-                                ),
-                              );
+                        if (!isOccupation) {
+                          if (!(_userPage?.editMode ?? false)) {
+                            _userPage?.editMode = true;
+                          } else {
+                            _userPage?.editMode = false;
+                            bool? resp = await dbconn?.updateUser(
+                                _userPage?.data.id ?? 0,
+                                _userPage?.controllers[0].text ?? "",
+                                _userPage?.controllers[1].text ?? "",
+                                _userPage?.controllers[2].text ?? "",
+                                _userPage?.controllers[3].text ?? "",
+                                _userPage?.controllers[4].text ?? "",
+                                _userPage?.controllers[5].text ?? "");
+                            if (context.mounted) {
+                              if (resp ?? false) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Updated!'),
+                                  ),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Something Went Wrong!'),
+                                  ),
+                                );
+                              }
                             }
                           }
+                          setState(() {});
+                        } else {
+                          final List<OccupationData> data =
+                              await dbconn?.listAllOccupations() ?? [];
+
+                          _showOccupationSelect(data);
                         }
-                        setState(() {});
                       },
                     )
                   ]
@@ -189,11 +227,19 @@ class _UserState extends State<User> {
                       Wrap(
                         alignment: WrapAlignment.center,
                         children: [
-                          detailsCard("First Name",
-                              _userPage?.controllers[0].text, Icons.person, 0),
+                          detailsCard(
+                              "First Name",
+                              _userPage?.controllers[0].text,
+                              Icons.person,
+                              0,
+                              false),
                           const SizedBox(height: 4.0),
-                          detailsCard("Last Name",
-                              _userPage?.controllers[1].text, Icons.person, 1),
+                          detailsCard(
+                              "Last Name",
+                              _userPage?.controllers[1].text,
+                              Icons.person,
+                              1,
+                              false),
                         ],
                       ),
                       Wrap(
@@ -205,28 +251,38 @@ class _UserState extends State<User> {
                               _userPage?.data.gender ?? true
                                   ? Icons.male
                                   : Icons.female,
-                              2),
+                              2,
+                              false),
                           const SizedBox(height: 4.0),
-                          detailsCard("Place of Birth",
-                              _userPage?.controllers[3].text, Icons.person, 3),
+                          detailsCard(
+                              "Place of Birth",
+                              _userPage?.controllers[3].text,
+                              Icons.person,
+                              3,
+                              false),
                         ],
                       ),
                       Wrap(
                         alignment: WrapAlignment.center,
                         children: [
-                          detailsCard("Date of Birth",
-                              _userPage?.controllers[4].text, Icons.cake, 4),
+                          detailsCard(
+                              "Date of Birth",
+                              _userPage?.controllers[4].text,
+                              Icons.cake,
+                              4,
+                              false),
                           const SizedBox(height: 4.0),
                           detailsCard(
                               "Date of Death",
                               _userPage?.controllers[5].text,
                               Icons.spa_outlined,
-                              5),
+                              5,
+                              false),
                         ],
                       ),
                       const SizedBox(height: 4.0),
                       detailsCard("Occupation", _userPage?.controllers[6].text,
-                          Icons.work_outline, 6),
+                          Icons.work_outline, 6, true),
                       const SizedBox(height: 4.0),
                     ],
                   ),

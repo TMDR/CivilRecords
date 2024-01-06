@@ -203,4 +203,49 @@ left OUTER JOIN organization ON worker.orgid = organization.id
     }
     return foundpeople;
   }
+
+  Future<List<OccupationData>> listAllOccupations() async {
+    String query = """
+        SELECT organization.id, organization.name, traits.traitid, traits.trait_val, CONCAT_WS(' ', person.first_name, person.last_name) AS owner_name
+        FROM traits LEFT OUTER JOIN organization ON traits.orgid = organization.id
+			              LEFT OUTER JOIN person ON organization.owner = person.id ORDER BY organization.id
+ """;
+    Result? res = await execute(query);
+    var row = res?.iterator;
+    List<OccupationData> list = [];
+    while (row?.moveNext() ?? false) {
+      var checked = false;
+      for (final (index, item) in list.indexed) {
+        if (item.id == row?.current[0]) {
+          list[index].traits.add(Trait(
+              id: row?.current[2] as int, value: row?.current[3] as String));
+          checked = true;
+          break;
+        }
+      }
+      if (!checked) {
+        list.add(OccupationData(
+            id: row?.current[0] as int,
+            title: row?.current[1] as String,
+            traits: [
+              Trait(
+                  id: row?.current[2] as int, value: row?.current[3] as String)
+            ],
+            owner: row?.current[4] as String));
+      }
+    }
+    return list;
+  }
+
+  Future<bool?> setOccupation(
+      bool occupationExists, int orgid, int traitid, int personid) async {
+    String query = !occupationExists
+        ? "INSERT INTO worker(orgid, trait, personid) VALUES($orgid, $traitid, $personid)"
+        : "UPDATE worker SET orgid = $orgid, trait = $traitid WHERE personid = $personid";
+    Result? res = await execute(query);
+    if (res == null) {
+      return false;
+    }
+    return true;
+  }
 }
