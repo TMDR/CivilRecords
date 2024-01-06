@@ -115,6 +115,39 @@ left OUTER JOIN organization ON worker.orgid = organization.id
     }
   }
 
+  Future<Person?> getUserById(int id) async {
+    String query = "SELECT * FROM person WHERE id=$id";
+    Result? res = await execute(query);
+    if (res == null || res.isEmpty) {
+      return null;
+    } else {
+      return Person(
+        id: res[0][0] as int,
+        firstName: res[0][1] as String,
+        lastName: res[0][2] as String,
+        placeOfBirth: res[0][3] as String,
+        dateOfBirth: (res[0][4] as DateTime).toString().split(" ")[0],
+        dateOfDeath: null,
+        gender: !(res[0][6] as bool),
+        occupation: null,
+      );
+    }
+  }
+
+  Future<bool?> addMarriage(List<int> ids) async {
+    //check if it already exists
+    Result? res = await execute(
+        "SELECT * FROM relations WHERE person1_id = ${ids[0]}} OR person2_id = ${ids[1]}");
+    if (res?.isEmpty ?? false) {
+      res = await execute(
+          "INSERT INTO relations(person1_id, person2_id, relation_type) VALUES(${ids[0]}, ${ids[1]}, 1)");
+      if (res?.affectedRows == 1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   Future<int?> singupuser(
       String firstname,
       String lastname,

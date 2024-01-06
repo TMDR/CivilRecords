@@ -1,4 +1,5 @@
 import 'package:civilrecord/components/occupationselect.dart';
+import 'package:civilrecord/login/login_page.dart';
 import 'package:civilrecord/utils/db.dart';
 import 'components/multiselect.dart';
 import 'package:civilrecord/values/app_colors.dart';
@@ -8,9 +9,14 @@ import 'components/filters.dart';
 import 'components/models.dart';
 
 class User extends StatefulWidget {
+  final Person? loggedInUser;
   final Pdb? dbconn;
   final int? id;
-  const User({super.key, required this.dbconn, required this.id});
+  const User(
+      {super.key,
+      required this.dbconn,
+      required this.id,
+      required this.loggedInUser});
   @override
   State<User> createState() => _UserState();
 }
@@ -214,78 +220,72 @@ class _UserState extends State<User> {
             child: Wrap(
               alignment: WrapAlignment.center,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      const Icon(
-                        Icons.account_circle_outlined,
-                        color: AppColors.grey,
-                        size: 150,
-                      ),
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        children: [
-                          detailsCard(
-                              "First Name",
-                              _userPage?.controllers[0].text,
-                              Icons.person,
-                              0,
-                              false),
-                          const SizedBox(height: 4.0),
-                          detailsCard(
-                              "Last Name",
-                              _userPage?.controllers[1].text,
-                              Icons.person,
-                              1,
-                              false),
-                        ],
-                      ),
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        children: [
-                          detailsCard(
-                              "Gender",
-                              _userPage?.controllers[2].text,
-                              _userPage?.data.gender ?? true
-                                  ? Icons.male
-                                  : Icons.female,
-                              2,
-                              false),
-                          const SizedBox(height: 4.0),
-                          detailsCard(
-                              "Place of Birth",
-                              _userPage?.controllers[3].text,
-                              Icons.person,
-                              3,
-                              false),
-                        ],
-                      ),
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        children: [
-                          detailsCard(
-                              "Date of Birth",
-                              _userPage?.controllers[4].text,
-                              Icons.cake,
-                              4,
-                              false),
-                          const SizedBox(height: 4.0),
-                          detailsCard(
-                              "Date of Death",
-                              _userPage?.controllers[5].text,
-                              Icons.spa_outlined,
-                              5,
-                              false),
-                        ],
-                      ),
-                      const SizedBox(height: 4.0),
-                      detailsCard("Occupation", _userPage?.controllers[6].text,
-                          Icons.work_outline, 6, true),
-                      const SizedBox(height: 4.0),
-                    ],
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.account_circle_outlined,
+                      color: AppColors.grey,
+                      size: 150,
+                    ),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      children: [
+                        detailsCard(
+                            "First Name",
+                            _userPage?.controllers[0].text,
+                            Icons.person,
+                            0,
+                            false),
+                        const SizedBox(height: 4.0),
+                        detailsCard("Last Name", _userPage?.controllers[1].text,
+                            Icons.person, 1, false),
+                      ],
+                    ),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      children: [
+                        detailsCard(
+                            "Gender",
+                            _userPage?.controllers[2].text,
+                            _userPage?.data.gender ?? true
+                                ? Icons.male
+                                : Icons.female,
+                            2,
+                            false),
+                        const SizedBox(height: 4.0),
+                        detailsCard(
+                            "Place of Birth",
+                            _userPage?.controllers[3].text,
+                            Icons.person,
+                            3,
+                            false),
+                      ],
+                    ),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      children: [
+                        detailsCard(
+                            "Date of Birth",
+                            _userPage?.controllers[4].text,
+                            Icons.cake,
+                            4,
+                            false),
+                        const SizedBox(height: 4.0),
+                        detailsCard(
+                            "Date of Death",
+                            _userPage?.controllers[5].text,
+                            Icons.spa_outlined,
+                            5,
+                            false),
+                      ],
+                    ),
+                    const SizedBox(height: 4.0),
+                    detailsCard("Occupation", _userPage?.controllers[6].text,
+                        Icons.work_outline, 6, true),
+                    const SizedBox(height: 4.0),
+                  ],
                 ),
                 const SizedBox(height: 4.0),
                 Container(
@@ -363,10 +363,68 @@ class _UserState extends State<User> {
     if (!big && _userPage != null) {
       mainLayout = details(big);
     }
+    Widget menu() {
+      return PopupMenuButton(itemBuilder: (context) {
+        return [
+          PopupMenuItem<int>(
+            value: 0,
+            enabled: _userPage != null &&
+                (widget.loggedInUser?.gender != _userPage?.data.gender &&
+                    widget.loggedInUser != null),
+            child: const Text("Marry"),
+          ),
+          PopupMenuItem<int>(
+            enabled: (widget.loggedInUser != null),
+            value: 1,
+            child: const Text("Add Child"),
+          ),
+          const PopupMenuItem<int>(
+            value: 2,
+            child: Text("Log Out"),
+          )
+        ];
+      }, onSelected: (value) async {
+        if (value == 0) {
+          if (widget.loggedInUser?.gender ?? false) {
+            List<int> ids = [
+              widget.loggedInUser?.id ?? 0,
+              _userPage?.data.id ?? 0
+            ];
+            bool? resp = await dbconn?.addMarriage(
+                widget.loggedInUser?.gender ?? true
+                    ? ids
+                    : ids.reversed.toList());
+            if (resp ?? false) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('Marriage Added!'),
+                ));
+              }
+            } else {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('Error!'),
+                ));
+              }
+            }
+          }
+        } else if (value == 1) {
+          //TODO Add Child
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (BuildContext context) => const LoginPage(),
+            ),
+          );
+        }
+      });
+    }
 
     return Scaffold(
       appBar: (!big && _userPage != null)
           ? AppBar(
+              actions: [menu()],
               backgroundColor: AppColors.darkBlue,
               foregroundColor: Colors.white,
               title: const Text('Details'),
@@ -385,6 +443,7 @@ class _UserState extends State<User> {
               foregroundColor: Colors.white,
               title: const Text('User'),
               centerTitle: true,
+              actions: [menu()],
             ),
       body: mainLayout,
     );

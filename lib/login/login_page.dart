@@ -1,3 +1,4 @@
+import 'package:civilrecord/components/models.dart';
 import 'package:civilrecord/login/register_page.dart';
 import 'package:civilrecord/user.dart';
 import 'package:flutter/material.dart';
@@ -188,15 +189,22 @@ class _LoginPageState extends State<LoginPage> {
                                               );
                                               emailController.clear();
                                               passwordController.clear();
-
-                                              Navigator.pushReplacement(
+                                              Person? loggedIn = await dbconn
+                                                  ?.getUserById(res ?? 0);
+                                              if (context.mounted) {
+                                                Navigator.pushReplacement(
                                                   context,
                                                   MaterialPageRoute(
-                                                      builder: (BuildContext
-                                                              context) =>
-                                                          User(
-                                                              dbconn: dbconn,
-                                                              id: res)));
+                                                    builder: (BuildContext
+                                                            context) =>
+                                                        User(
+                                                      dbconn: dbconn,
+                                                      id: res,
+                                                      loggedInUser: loggedIn,
+                                                    ),
+                                                  ),
+                                                );
+                                              }
                                             }
                                           } else {
                                             if (context.mounted) {
