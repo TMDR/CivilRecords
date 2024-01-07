@@ -9,17 +9,18 @@ class Person {
   final String? dateOfDeath;
   final bool gender;
   final Occupation? occupation;
+  final int? spouse;
 
-  Person({
-    required this.id,
-    required this.firstName,
-    required this.lastName,
-    required this.placeOfBirth,
-    required this.dateOfBirth,
-    required this.dateOfDeath,
-    required this.gender,
-    required this.occupation,
-  });
+  Person(
+      {required this.id,
+      required this.firstName,
+      required this.lastName,
+      required this.placeOfBirth,
+      required this.dateOfBirth,
+      required this.dateOfDeath,
+      required this.gender,
+      required this.occupation,
+      required this.spouse});
 }
 
 class Occupation {

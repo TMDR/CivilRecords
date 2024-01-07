@@ -1,6 +1,8 @@
 import 'package:civilrecord/components/models.dart';
 import 'package:postgres/postgres.dart';
 
+//TODO: move queries to /values
+//TODO: move some logic to query
 class Pdb {
   Pdb();
   late Connection conn;
@@ -52,21 +54,21 @@ class Pdb {
     }
   }
 
-  Future<Map<Person, String>?> getRelated(int id) async {
+  Future<Map<Person, String>?> getRelated(int id, int spouseId) async {
     String query = """ 
 
     SELECT person.id,person.first_name,person.last_name,place_of_birth,date_of_birth,date_of_death,gender,
-organization.name as Organization,
-	                            traits.trait_val, case when person.id = person2_id OR relation_types.name = 'spouse' then relation_types.name else 'parent' end as relation_name FROM PERSON 
-INNER JOIN relation ON 
-(relation.person1_id=person.id AND relation.person2_id=$id)
-OR 
-(relation.person2_id=person.id AND relation.person1_id=$id)
-INNER JOIN relation_types ON relation_type = type_id
-left OUTER JOIN worker ON worker.personid = person.id
-left OUTER JOIN traits ON worker.trait = traits.traitid 
-left OUTER JOIN organization ON worker.orgid = organization.id
-    
+            organization.name as Organization,
+	          traits.trait_val,
+			case when person.id = spouses.person1_id then spouses.person2_id else spouses.person1_id end as spouse,
+            case when person.id = relation.person2_id OR relation_types.name = 'spouse' then relation_types.name else 'parent' end as relation_name
+			FROM PERSON 
+    INNER JOIN relation ON (relation.person1_id=person.id AND relation.person2_id = $id) OR (relation.person2_id=person.id AND relation.person1_id IN ($id,$spouseId))
+    INNER JOIN relation_types ON relation_type = type_id
+    left JOIN worker ON worker.personid = person.id
+    left JOIN traits ON worker.trait = traits.traitid 
+    left JOIN organization ON worker.orgid = organization.id
+	  left JOIN relation as spouses ON (spouses.person1_id = person.id OR spouses.person2_id = person.id) AND spouses.relation_type = 1 WHERE person.id != $id
     """;
     Result? resp = await execute(query);
     if (resp == null) {
@@ -79,23 +81,23 @@ left OUTER JOIN organization ON worker.orgid = organization.id
         [
           MapEntry(
               Person(
-                id: row.current[0] as int,
-                firstName: row.current[1] as String,
-                lastName: row.current[2] as String,
-                placeOfBirth: row.current[3] as String,
-                dateOfBirth:
-                    (row.current[4] as DateTime).toString().split(" ")[0],
-                dateOfDeath: (row.current[5] as DateTime? ?? "None")
-                    .toString()
-                    .split(" ")[0],
-                gender: !(row.current[6] as bool),
-                occupation: row.current[7] != null
-                    ? Occupation(
-                        organization: row.current[7] as String,
-                        trait: row.current[8] as String)
-                    : null,
-              ),
-              row.current[9] as String)
+                  id: row.current[0] as int,
+                  firstName: row.current[1] as String,
+                  lastName: row.current[2] as String,
+                  placeOfBirth: row.current[3] as String,
+                  dateOfBirth:
+                      (row.current[4] as DateTime).toString().split(" ")[0],
+                  dateOfDeath: (row.current[5] as DateTime? ?? "None")
+                      .toString()
+                      .split(" ")[0],
+                  gender: !(row.current[6] as bool),
+                  occupation: row.current[7] != null
+                      ? Occupation(
+                          organization: row.current[7] as String,
+                          trait: row.current[8] as String)
+                      : null,
+                  spouse: row.current[9] as int?),
+              row.current[10] as String)
         ],
       );
     }
@@ -116,31 +118,32 @@ left OUTER JOIN organization ON worker.orgid = organization.id
   }
 
   Future<Person?> getUserById(int id) async {
-    String query = "SELECT * FROM person WHERE id=$id";
+    String query =
+        "SELECT person.*, CASE when person1_id = person.id then person2_id else person1_id end as spouse FROM person LEFT OUTER JOIN relation ON (person1_id = person.id OR person2_id = person.id) AND relation_type = 1 WHERE id=$id";
     Result? res = await execute(query);
     if (res == null || res.isEmpty) {
       return null;
     } else {
       return Person(
-        id: res[0][0] as int,
-        firstName: res[0][1] as String,
-        lastName: res[0][2] as String,
-        placeOfBirth: res[0][3] as String,
-        dateOfBirth: (res[0][4] as DateTime).toString().split(" ")[0],
-        dateOfDeath: null,
-        gender: !(res[0][6] as bool),
-        occupation: null,
-      );
+          id: res[0][0] as int,
+          firstName: res[0][1] as String,
+          lastName: res[0][2] as String,
+          placeOfBirth: res[0][3] as String,
+          dateOfBirth: (res[0][4] as DateTime).toString().split(" ")[0],
+          dateOfDeath: null,
+          gender: !(res[0][6] as bool),
+          occupation: null,
+          spouse: res[0][7] as int?);
     }
   }
 
   Future<bool?> addMarriage(List<int> ids) async {
     //check if it already exists
     Result? res = await execute(
-        "SELECT * FROM relations WHERE person1_id = ${ids[0]}} OR person2_id = ${ids[1]}");
+        "SELECT * FROM relation WHERE person1_id = ${ids[0]} OR person2_id = ${ids[1]}");
     if (res?.isEmpty ?? false) {
       res = await execute(
-          "INSERT INTO relations(person1_id, person2_id, relation_type) VALUES(${ids[0]}, ${ids[1]}, 1)");
+          "INSERT INTO relation(person1_id, person2_id, relation_type) VALUES(${ids[0]}, ${ids[1]}, 1)");
       if (res?.affectedRows == 1) {
         return true;
       }
@@ -148,7 +151,30 @@ left OUTER JOIN organization ON worker.orgid = organization.id
     return false;
   }
 
-  Future<int?> singupuser(
+  Future<int?> checkIfMarried(int id) async {
+    if (id == 0) {
+      return null;
+    }
+    String query =
+        "SELECT person1_id, person2_id FROM relation WHERE (person1_id = $id OR person2_id = $id) AND relation_type = 1";
+    Result? res = await execute(query);
+    if (res?.affectedRows == 1) {
+      return res?[0][0] == id ? id : res?[0][1] as int;
+    }
+    return null;
+  }
+
+  Future<bool?> addChildRelation(int idParent, int idChild) async {
+    String query =
+        "INSERT INTO relation(person1_id, person2_id, relation_type) VALUES($idParent, $idChild, 2)";
+    Result? res = await execute(query);
+    if (res?.affectedRows == 1) {
+      return true;
+    }
+    return false;
+  }
+
+  Future<int?> signupuser(
       String firstname,
       String lastname,
       String username,
@@ -160,18 +186,35 @@ left OUTER JOIN organization ON worker.orgid = organization.id
     Result? res =
         await execute("SELECT * FROM login WHERE email = '$username'");
     if (res!.isEmpty) {
-      Result? res = await execute(
-          "INSERT into person(first_name, last_name, place_of_birth, date_of_birth, date_of_death, occupation, gender) VALUES ('$firstname', '$lastname', '$placeOfBirth', '$dateOfBirth'::date, NULL, NULL, ${(gender == 0 ? false : true).toString()}) RETURNING id;");
-      if (res!.affectedRows == 1) {
-        String? id = res[0][0].toString();
+      String query =
+          "INSERT into person(first_name, last_name, place_of_birth, date_of_birth, date_of_death, gender) VALUES ('$firstname', '$lastname', '$placeOfBirth', ${dateOfBirth == "None" ? "CURRENT_DATE" : "'$dateOfBirth'::date"}, NULL, ${(gender == 0 ? false : true).toString()}) RETURNING id;";
+      Result? res = await execute(query);
+      if (res?.affectedRows == 1 && res != null) {
+        int? id = res[0][0] as int;
         await execute(
             "INSERT INTO login(email, password, id) VALUES ('$username','$password',$id)");
-        return 0;
+        return id;
       } else {
         return 1;
       }
     } else {
       return -1;
+    }
+  }
+
+  Future<List<Object>?> getFatherDetailsForChild(int motherId) async {
+    if (motherId == 0) {
+      return null;
+    }
+    String query =
+        "SELECT id, last_name FROM person INNER JOIN relation ON person.id = person1_id WHERE person2_id = $motherId";
+    Result? res = await execute(query);
+    if (res == null) {
+      return null;
+    } else if (res.length != 1) {
+      return null;
+    } else {
+      return [res[0][0] as int, res[0][1] as String];
     }
   }
 
@@ -185,11 +228,12 @@ left OUTER JOIN organization ON worker.orgid = organization.id
     String select = """SELECT 
 	                            person.id,person.first_name,person.last_name,person.place_of_birth,person.date_of_birth,person.date_of_death,person.gender,
 	                            organization.name as Organization,
-	                            traits.trait_val
+	                            traits.trait_val, CASE when person1_id = person.id then person2_id else person1_id end as spouse
 
                       FROM PERSON LEFT JOIN worker ON worker.personid = person.id
 			                            LEFT JOIN traits ON worker.trait = traits.traitid 
 			                            LEFT JOIN organization ON worker.orgid = organization.id  
+                                  LEFT JOIN relation ON (person1_id = person.id OR person2_id = person.id) AND relation_type = 1
                       WHERE """;
     int length = select.length;
     select =
@@ -218,20 +262,21 @@ left OUTER JOIN organization ON worker.orgid = organization.id
     while (row?.moveNext() ?? false) {
       foundpeople.add(
         Person(
-          id: row?.current[0] as int,
-          firstName: row?.current[1] as String,
-          lastName: row?.current[2] as String,
-          placeOfBirth: row?.current[3] as String,
-          dateOfBirth: (row?.current[4] as DateTime).toString().split(" ")[0],
-          dateOfDeath:
-              (row?.current[5] as DateTime? ?? "None").toString().split(" ")[0],
-          gender: !(row?.current[6] as bool),
-          occupation: row?.current[7] != null
-              ? Occupation(
-                  organization: row?.current[7] as String,
-                  trait: row?.current[8] as String)
-              : null,
-        ),
+            id: row?.current[0] as int,
+            firstName: row?.current[1] as String,
+            lastName: row?.current[2] as String,
+            placeOfBirth: row?.current[3] as String,
+            dateOfBirth: (row?.current[4] as DateTime).toString().split(" ")[0],
+            dateOfDeath: (row?.current[5] as DateTime? ?? "None")
+                .toString()
+                .split(" ")[0],
+            gender: !(row?.current[6] as bool),
+            occupation: row?.current[7] != null
+                ? Occupation(
+                    organization: row?.current[7] as String,
+                    trait: row?.current[8] as String)
+                : null,
+            spouse: row?.current[9] as int?),
       );
     }
     return foundpeople;

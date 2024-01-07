@@ -302,7 +302,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             if (!isSelected[0]) {
                               gender = 1;
                             }
-                            int? res = await widget.conn?.singupuser(
+                            int? res = await widget.conn?.signupuser(
                                 firstnameController.text,
                                 lastnameController.text,
                                 emailController.text,
@@ -311,14 +311,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                 gender,
                                 dateController.text);
                             if (context.mounted) {
-                              if (res == 0) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        'Registration Complete, Please login!'),
-                                  ),
-                                );
-                              } else if (res == 1 || res == null) {
+                              if (res == 1 || res == null) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text('Something went Wrong!'),
@@ -328,6 +321,13 @@ class _RegisterPageState extends State<RegisterPage> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text('Email already in use!'),
+                                  ),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        'Registration Complete, Please login!'),
                                   ),
                                 );
                               }

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:expandable_bottom_sheet/expandable_bottom_sheet.dart';
 import 'components/filters.dart';
 import 'components/models.dart';
+import 'components/childcreation.dart';
 
 class User extends StatefulWidget {
   final Person? loggedInUser;
@@ -30,7 +31,8 @@ class _UserState extends State<User> {
   late final BirthDateFilter _birthDateFilter;
   late final DeathDateFilter _deathDateFilter;
   List<Person> people = [];
-
+  bool isChanged = true;
+  Map<Person, String>? cache;
   final List<String> items = ['Date of Birth', 'Date of Death'];
   List<String> _selectedItems = [];
   void _selectedItemsCallBackRemove(String value) {
@@ -52,6 +54,16 @@ class _UserState extends State<User> {
         context, setStateCallBack, _selectedItemsCallBackRemove);
     //not sure if i'll need that one
     dbconn = widget.dbconn;
+  }
+
+  Future<List<Object>?> _showChildCreation() async {
+    final List<Object>? results = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return const ChildCreator();
+      },
+    );
+    return results;
   }
 
   void _showOccupationSelect(List<OccupationData> data) async {
@@ -293,9 +305,9 @@ class _UserState extends State<User> {
                     constraints:
                         const BoxConstraints(minWidth: 400, maxWidth: 401),
                     child: FutureBuilder(
-                      future: dbconn?.getRelated(_userPage?.data.id ?? 0),
+                      future: getRelatedFunc(),
                       builder: (context, snapshot) {
-                        if (snapshot.data != null) {
+                        if (snapshot.data != null || !isChanged) {
                           return SingleChildScrollView(
                             child: ExpansionTile(
                               title: const Text("Related People"),
@@ -304,6 +316,7 @@ class _UserState extends State<User> {
                                   GestureDetector(
                                     onTap: () {
                                       setState(() {
+                                        isChanged = true;
                                         _userPage = UserPage(data: person);
                                       });
                                     },
@@ -330,6 +343,15 @@ class _UserState extends State<User> {
         ),
       ),
     );
+  }
+
+  Future<Map<Person, String>?> getRelatedFunc() async {
+    if (isChanged) {
+      isChanged = !isChanged;
+      cache = await dbconn?.getRelated(
+          _userPage?.data.id ?? 0, _userPage?.data.spouse ?? 0);
+    }
+    return cache;
   }
 
   Widget twoPaneLayout(bool big, List<Person> people) {
@@ -385,31 +407,92 @@ class _UserState extends State<User> {
         ];
       }, onSelected: (value) async {
         if (value == 0) {
-          if (widget.loggedInUser?.gender ?? false) {
-            List<int> ids = [
-              widget.loggedInUser?.id ?? 0,
-              _userPage?.data.id ?? 0
-            ];
-            bool? resp = await dbconn?.addMarriage(
-                widget.loggedInUser?.gender ?? true
-                    ? ids
-                    : ids.reversed.toList());
-            if (resp ?? false) {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('Marriage Added!'),
-                ));
-              }
-            } else {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('Error!'),
-                ));
-              }
+          List<int> ids = [
+            widget.loggedInUser?.id ?? 0,
+            _userPage?.data.id ?? 0
+          ];
+          bool? resp = await dbconn?.addMarriage(
+              widget.loggedInUser?.gender ?? true
+                  ? ids
+                  : ids.reversed.toList());
+          if (resp ?? false) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text('Marriage Added!'),
+              ));
+            }
+          } else {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text('Error!'),
+              ));
             }
           }
         } else if (value == 1) {
-          //TODO Add Child
+          //first check if married
+          int? resp =
+              await dbconn?.checkIfMarried(widget.loggedInUser?.id ?? 0);
+          if (resp != null) {
+            List<Object>? results = await _showChildCreation();
+            String lastname;
+            int idParent;
+            //now add a child
+            if (resp == widget.id) {
+              //is a man
+              lastname = widget.loggedInUser?.lastName ?? "None";
+              idParent = widget.loggedInUser?.id ?? 0;
+            } else {
+              List<Object>? resp =
+                  await dbconn?.getFatherDetailsForChild(widget.id ?? 0);
+              if (resp != null) {
+                lastname = resp[1] as String;
+                idParent = resp[0] as int;
+              } else {
+                return;
+              }
+            }
+            if (results != null) {
+              int? res = await dbconn?.signupuser(
+                  results[0] as String,
+                  lastname,
+                  results[1] as String,
+                  results[2] as String,
+                  results[3] as String,
+                  results[4] as int,
+                  "None");
+              if (context.mounted) {
+                if (res == 1 || res == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Something went Wrong!'),
+                    ),
+                  );
+                } else if (res == -1) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Email already in use!'),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Child Registered!'),
+                    ),
+                  );
+                  await dbconn?.addChildRelation(idParent, res);
+                  setState(() {});
+                }
+              }
+            }
+          } else {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Not married!'),
+                ),
+              );
+            }
+          }
         } else {
           Navigator.pushReplacement(
             context,
@@ -576,8 +659,9 @@ class _UserState extends State<User> {
     return [
       for (Person person in data)
         GestureDetector(
-          onTap: () {
+          onTap: () async {
             setState(() {
+              isChanged = true;
               _userPage = UserPage(data: person);
             });
           },
