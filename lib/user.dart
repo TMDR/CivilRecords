@@ -1,6 +1,8 @@
 import 'package:civilrecord/components/occupationselect.dart';
+import 'package:civilrecord/components/tree_graphview.dart';
 import 'package:civilrecord/login/login_page.dart';
 import 'package:civilrecord/utils/db.dart';
+import 'package:graphview/GraphView.dart';
 import 'components/multiselect.dart';
 import 'package:civilrecord/values/app_colors.dart';
 import 'package:flutter/material.dart';
@@ -164,9 +166,10 @@ class _UserState extends State<User> {
                 : [
                     const Spacer(),
                     IconButton(
-                      icon: Icon(!(_userPage?.editMode ?? false)
-                          ? Icons.edit
-                          : Icons.check),
+                      icon: Icon(
+                          (!(_userPage?.editMode ?? false) || isOccupation)
+                              ? Icons.edit
+                              : Icons.check),
                       onPressed: () async {
                         if (!isOccupation) {
                           if (!(_userPage?.editMode ?? false)) {
@@ -385,6 +388,29 @@ class _UserState extends State<User> {
     if (!big && _userPage != null) {
       mainLayout = details(big);
     }
+    Future<void> callTree(Person? data) async {
+      Graph? graph = await dbconn?.createGraph(data);
+      if (graph != null && graph.hasNodes()) {
+        if (context.mounted) {
+          final results = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => TreeViewPage(graph: graph)),
+          );
+          if (results != null) {
+            _userPage = UserPage(data: results as Person);
+            isChanged = true;
+            setState(() {});
+          }
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Tree is Empty!'),
+          ));
+        }
+      }
+    }
+
     Widget menu() {
       return PopupMenuButton(itemBuilder: (context) {
         return [
@@ -400,10 +426,20 @@ class _UserState extends State<User> {
             value: 1,
             child: const Text("Add Child"),
           ),
-          const PopupMenuItem<int>(
+          PopupMenuItem<int>(
             value: 2,
+            enabled: (widget.loggedInUser != null),
+            child: const Text("Show Own Tree"),
+          ),
+          PopupMenuItem<int>(
+            value: 3,
+            enabled: (_userPage != null),
+            child: const Text("Show Selected Tree"),
+          ),
+          const PopupMenuItem<int>(
+            value: 4,
             child: Text("Log Out"),
-          )
+          ),
         ];
       }, onSelected: (value) async {
         if (value == 0) {
@@ -430,14 +466,12 @@ class _UserState extends State<User> {
           }
         } else if (value == 1) {
           //first check if married
-          int? resp =
-              await dbconn?.checkIfMarried(widget.loggedInUser?.id ?? 0);
-          if (resp != null) {
+          if (widget.loggedInUser?.spouse != null) {
             List<Object>? results = await _showChildCreation();
             String lastname;
             int idParent;
             //now add a child
-            if (resp == widget.id) {
+            if (widget.loggedInUser?.gender ?? true) {
               //is a man
               lastname = widget.loggedInUser?.lastName ?? "None";
               idParent = widget.loggedInUser?.id ?? 0;
@@ -493,7 +527,11 @@ class _UserState extends State<User> {
               );
             }
           }
-        } else {
+        } else if (value == 2) {
+          callTree(widget.loggedInUser);
+        } else if (value == 3) {
+          callTree(_userPage?.data);
+        } else if (value == 4) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(

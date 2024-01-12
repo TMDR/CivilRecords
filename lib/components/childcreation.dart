@@ -1,4 +1,3 @@
-// main.dart
 import 'package:civilrecord/components/app_text_form_field.dart';
 import 'package:civilrecord/values/app_constants.dart';
 import 'package:flutter/material.dart';

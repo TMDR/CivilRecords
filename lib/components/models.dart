@@ -9,7 +9,7 @@ class Person {
   final String? dateOfDeath;
   final bool gender;
   final Occupation? occupation;
-  final int? spouse;
+  int? spouse;
 
   Person(
       {required this.id,

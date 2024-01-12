@@ -38,6 +38,9 @@ dependencies:
   flutter_svg: ^2.0.9
   postgres: ^3.0.4
   expandable_bottom_sheet: ^1.1.1+1
+  graphview: ^1.2.0
+  collection: ^1.17.2
+  faker: ^2.1.0
 
 dev_dependencies:
   flutter_test:

@@ -1,8 +1,9 @@
 import 'package:civilrecord/components/models.dart';
+import 'package:flutter/material.dart';
+import 'package:graphview/GraphView.dart';
 import 'package:postgres/postgres.dart';
+import 'package:collection/collection.dart';
 
-//TODO: move queries to /values
-//TODO: move some logic to query
 class Pdb {
   Pdb();
   late Connection conn;
@@ -140,7 +141,7 @@ class Pdb {
   Future<bool?> addMarriage(List<int> ids) async {
     //check if it already exists
     Result? res = await execute(
-        "SELECT * FROM relation WHERE person1_id = ${ids[0]} OR person2_id = ${ids[1]}");
+        "SELECT * FROM relation WHERE (person1_id = ${ids[0]} OR person2_id = ${ids[1]}) AND relation_type = 1");
     if (res?.isEmpty ?? false) {
       res = await execute(
           "INSERT INTO relation(person1_id, person2_id, relation_type) VALUES(${ids[0]}, ${ids[1]}, 1)");
@@ -151,17 +152,57 @@ class Pdb {
     return false;
   }
 
-  Future<int?> checkIfMarried(int id) async {
-    if (id == 0) {
-      return null;
+  Future<Graph> createGraph(Person? p) async {
+    List<List<List<dynamic>>> list = [];
+    List<List<Object>> listt = [];
+    var res = await getRelated(p?.id ?? 0, p?.spouse ?? 0);
+    Person? father =
+        res?.keys.firstWhereOrNull((element) => res?[element] == 'parent');
+    int? fatherOfChildren = 0;
+    if (father != null && res != null) {
+      do {
+        father =
+            res?.keys.firstWhereOrNull((element) => res?[element] == 'parent');
+        res = await getRelated(father?.id ?? 0, father?.spouse ?? 0);
+        res?.forEach((key, value) {
+          if (value == "child") {
+            listt.add([key, fatherOfChildren == key.id ? true : false]);
+          }
+        });
+        list.add(List.from(listt));
+        listt.clear();
+        fatherOfChildren = father?.id;
+      } while (
+          res?.keys.firstWhereOrNull((element) => res?[element] == 'parent') !=
+              null);
+      list.add(List.from([
+        List.from([father, true])
+      ]));
     }
-    String query =
-        "SELECT person1_id, person2_id FROM relation WHERE (person1_id = $id OR person2_id = $id) AND relation_type = 1";
-    Result? res = await execute(query);
-    if (res?.affectedRows == 1) {
-      return res?[0][0] == id ? id : res?[0][1] as int;
+    List<Node> nodes = [];
+    for (var i = 0; i < list.length; i++) {
+      for (List<dynamic> dataOfPerson in list[i]) {
+        nodes.add(Node.Id(List.from(dataOfPerson)..add(i)));
+      }
     }
-    return null;
+    int ancestor;
+    List<Node> sublist;
+    Graph graph = Graph();
+    for (var i = 0; i < nodes.length - 1; i++) {
+      sublist = nodes.sublist(i + 1);
+      ancestor = sublist.indexWhere((element) =>
+              (((element.key as ValueKey<dynamic>).value[1] as bool) &&
+                  (element.key as ValueKey<dynamic>).value[2] >
+                      nodes[i].key?.value[2])) +
+          i +
+          1;
+      if (ancestor != -1) {
+        graph.addEdge(nodes[ancestor], nodes[i]);
+      } else {
+        break;
+      }
+    }
+    return graph;
   }
 
   Future<bool?> addChildRelation(int idParent, int idChild) async {
@@ -236,9 +277,12 @@ class Pdb {
                                   LEFT JOIN relation ON (person1_id = person.id OR person2_id = person.id) AND relation_type = 1
                       WHERE """;
     int length = select.length;
-    select =
-        firstName == "" ? select : ("${select}first_name='$firstName' AND ");
-    select = lastName == "" ? select : ("${select}last_name='$lastName' AND ");
+    select = firstName == ""
+        ? select
+        : ("${select}LOWER(first_name)=LOWER('$firstName') AND ");
+    select = lastName == ""
+        ? select
+        : ("${select}LOWER(last_name)=LOWER('$lastName') AND ");
     select = fromDateOfBirth == ""
         ? select
         : ("${select}date_of_birth>='$fromDateOfBirth' AND ");
@@ -326,4 +370,46 @@ class Pdb {
     }
     return true;
   }
+
+  //temporary measure
+  // Future<List<List<dynamic>>> getMarriedIds() async {
+  //   String query = """
+
+  //                     select person1_id, last_name from relation left join person ON person1_id = id where relationid>61 and relation_type = 1
+
+  //                   """;
+  //   Result? res = await execute(query);
+  //   var it = res?.iterator;
+  //   List<List<dynamic>> resp = [];
+  //   while (it?.moveNext() ?? false) {
+  //     resp.add(List.from([it?.current[0], it?.current[1]]));
+  //   }
+  //   return resp;
+  // }
+
+  // Future<List<List<dynamic>>> getMaleChildren() async {
+  //   String query = """
+  //                 SELECT id,last_name from person where person.id > 90 and  gender = false ORDER BY person.id
+  //                 """;
+  //   Result? res = await execute(query);
+  //   var it = res?.iterator;
+  //   List<List<dynamic>> list = [];
+  //   while (it?.moveNext() ?? false) {
+  //     list.add(List.from([it?.current[0], it?.current[1]]));
+  //   }
+  //   return list;
+  // }
+
+  // Future<List<List<dynamic>>> getFemaleChildren() async {
+  //   String query = """
+  //                 SELECT id, last_name from person where person.id > 90 and  gender = true ORDER BY person.id
+  //                 """;
+  //   Result? res = await execute(query);
+  //   var it = res?.iterator;
+  //   List<List<dynamic>> list = [];
+  //   while (it?.moveNext() ?? false) {
+  //     list.add(List.from([it?.current[0], it?.current[1]]));
+  //   }
+  //   return list;
+  // }
 }
