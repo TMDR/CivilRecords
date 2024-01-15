@@ -55,6 +55,29 @@ class Pdb {
     }
   }
 
+  Future<bool> createWork(
+      int? creatorId, String name, List<dynamic> traits) async {
+    if (creatorId != null) {
+      //add org
+      String query = """ 
+      INSERT INTO organization(owner,name) VALUES ($creatorId, '$name') RETURNING id;
+      """;
+      Result? resp = await execute(query);
+      Result? res;
+      if (resp != null) {
+        for (String trait in traits) {
+          query =
+              " INSERT INTO traits(orgid, trait_val) VALUES(${resp[0][0]}, '$trait');";
+          res = await execute(query);
+        }
+        if (res != null) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   Future<Map<Person, String>?> getRelated(int id, int spouseId) async {
     String query = """ 
 

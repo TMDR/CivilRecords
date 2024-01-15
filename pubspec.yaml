@@ -40,7 +40,6 @@ dependencies:
   expandable_bottom_sheet: ^1.1.1+1
   graphview: ^1.2.0
   collection: ^1.17.2
-  faker: ^2.1.0
 
 dev_dependencies:
   flutter_test:
@@ -60,7 +59,7 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
   assets:
-    - assets/icons/
+    - assets/
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.

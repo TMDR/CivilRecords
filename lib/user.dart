@@ -1,3 +1,4 @@
+import 'package:civilrecord/components/creatework.dart';
 import 'package:civilrecord/components/occupationselect.dart';
 import 'package:civilrecord/components/tree_graphview.dart';
 import 'package:civilrecord/login/login_page.dart';
@@ -68,6 +69,38 @@ class _UserState extends State<User> {
     return results;
   }
 
+  void _showCreateWork() async {
+    final List<dynamic>? results = await showDialog(
+      context: context,
+      builder: (context) {
+        return const CreateWork();
+      },
+    );
+    if (results != null) {
+      if (results.length < 2) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Please add at least one trait!'),
+          ));
+        }
+      } else {
+        bool? res = await dbconn?.createWork(
+            widget.loggedInUser?.id, results[0], results.sublist(1));
+        if (context.mounted) {
+          if (res != null && res) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('Done!'),
+            ));
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('Something Went Wrong!'),
+            ));
+          }
+        }
+      }
+    }
+  }
+
   void _showOccupationSelect(List<OccupationData> data) async {
     final List<Object>? results = await showDialog(
       context: context,
@@ -95,6 +128,7 @@ class _UserState extends State<User> {
         }
       }
       _userPage?.controllers[6].text = '${results[2]} as ${results[3]}';
+      await search();
     }
   }
 
@@ -184,6 +218,7 @@ class _UserState extends State<User> {
                                 _userPage?.controllers[3].text ?? "",
                                 _userPage?.controllers[4].text ?? "",
                                 _userPage?.controllers[5].text ?? "");
+                            await search();
                             if (context.mounted) {
                               if (resp ?? false) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -427,6 +462,11 @@ class _UserState extends State<User> {
             child: const Text("Add Child"),
           ),
           PopupMenuItem<int>(
+            enabled: (widget.loggedInUser != null),
+            value: 5,
+            child: const Text("Create Work"),
+          ),
+          PopupMenuItem<int>(
             value: 2,
             enabled: (widget.loggedInUser != null),
             child: const Text("Show Own Tree"),
@@ -538,6 +578,8 @@ class _UserState extends State<User> {
               builder: (BuildContext context) => const LoginPage(),
             ),
           );
+        } else if (value == 5) {
+          _showCreateWork();
         }
       });
     }
