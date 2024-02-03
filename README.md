@@ -1,10 +1,8 @@
 # civilrecord
 
-A new Flutter project.
+a cross-platfrom app, Its intent is to visualize records of people and their relations with a tree of generations
 
-## Getting Started
-
-This project is a starting point for a Flutter application.
+## Get Started
 
 A few resources to get you started if this is your first Flutter project:
 
